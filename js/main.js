@@ -1,15 +1,16 @@
 // main.js — Entry point
-// Bootstraps the Three.js scene, builds the CSG wall,
+// Bootstraps the Three.js scene, builds the plaster wall,
 // then runs the animation loop.
 
-import { initScene, resizeRenderer } from './scene.js';
-import { buildWall } from './wall.js';
-import { projects, categoryOrder } from './projects.js';
-import { initScroll, setBounds } from './scroll.js';
-import { buildCarousels } from './carousel.js';
-import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js';
-import { buildEnvironment } from './environment.js';
-import { initInteractions } from './interactions.js';
+import { initScene, positionCamera, resizeRenderer } from './scene.js?v=plain-wall-2';
+import { buildWall } from './wall.js?v=plain-wall-2';
+import { projects, categoryOrder } from './projects.js?v=plain-wall-2';
+import { initScroll, setBounds } from './scroll.js?v=plain-wall-2';
+import { buildCarousels } from './carousel.js?v=plain-wall-2';
+import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=plain-wall-2';
+import { buildEnvironment } from './environment.js?v=plain-wall-2';
+import { initInteractions } from './interactions.js?v=plain-wall-2';
+import { isMobileLayout } from './layout.js?v=plain-wall-2';
 
 async function main() {
   const hasWebGL = (() => {
@@ -26,8 +27,9 @@ async function main() {
   }
 
   const { scene, camera, renderer } = initScene();
+  let mobileLayout = isMobileLayout();
 
-  // Build the wall with CSG cavities
+  // Build the wall with physical openings
   const { wallGroup, cavityData } = await buildWall(scene, projects, categoryOrder);
 
   // Build carousels inside cavities
@@ -40,14 +42,11 @@ async function main() {
 
   initInteractions(camera, renderer, plaqueObjects);
 
-  // Determine scroll bounds from cavity positions
-  const firstX = cavityData[0].worldX;
-  const lastX = cavityData[cavityData.length - 1].worldX;
-  setBounds(firstX - 5, lastX + 5);
+  const firstY = cavityData[0].worldY;
+  const lastY = cavityData[cavityData.length - 1].worldY;
+  setBounds(lastY - 2.5, firstY + 4.2);
 
-  // Start camera at the first cavity
-  camera.position.set(firstX, 4, 3.5);
-  camera.lookAt(firstX, 3, 0);
+  positionCamera(camera, firstY + 3.5);
 
   const scrollCtrl = initScroll(camera);
 
@@ -60,12 +59,19 @@ async function main() {
     lastTime = now;
 
     scrollCtrl.update(dt);
-    updateCarousels(dt, camera.position.x);
+    updateCarousels(dt, camera.position.y);
 
     renderer.render(scene, camera);
   }
 
-  window.addEventListener('resize', () => resizeRenderer(renderer, camera));
+  window.addEventListener('resize', () => {
+    resizeRenderer(renderer, camera);
+    const nextMobileLayout = isMobileLayout();
+    if (nextMobileLayout !== mobileLayout) {
+      mobileLayout = nextMobileLayout;
+      window.location.reload();
+    }
+  });
 
   // Hide loading screen
   const loadingEl = document.getElementById('loading-screen');
