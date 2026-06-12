@@ -33,8 +33,8 @@ export function initScene() {
     0.5,                                      // near
     80,                                       // far
   );
-  camera.position.set(0, 4, 3.5);  // eye level, closer to wall
-  camera.lookAt(0, 4, 0);
+  camera.position.set(0, 4, 3.5);  // eye level, looking at wall center (y=3)
+  camera.lookAt(0, 3, 0);
 
   // ── Lighting ─────────────────────────────────────────
   // Soft ambient fill
