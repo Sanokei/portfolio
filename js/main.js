@@ -46,7 +46,7 @@ async function main() {
   setBounds(firstX - 5, lastX + 5);
 
   // Start camera at the first cavity
-  camera.position.set(firstX, 4, 6);
+  camera.position.set(firstX, 4, 3.5);
   camera.lookAt(firstX, 4, 0);
 
   const scrollCtrl = initScroll(camera);
