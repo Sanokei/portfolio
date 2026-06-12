@@ -75,7 +75,7 @@ export function initScroll(camera) {
       if (!cameraRef) return;
       const frameEasing = 1 - Math.pow(1 - EASING, dt * 60); // frame-rate independent
       cameraRef.position.x += (targetX - cameraRef.position.x) * frameEasing;
-      cameraRef.lookAt(cameraRef.position.x, 4, 0);
+      cameraRef.lookAt(cameraRef.position.x, 3, 0);
     },
   };
 }
