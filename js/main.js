@@ -1,11 +1,12 @@
 // main.js — Entry point
-// Bootstraps the Three.js scene, triggers CSG wall construction,
-// and runs the animation loop.
+// Bootstraps the Three.js scene, builds the CSG wall,
+// then runs the animation loop.
 
 import { initScene, resizeRenderer } from './scene.js';
+import { buildWall } from './wall.js';
+import { projects, categoryOrder } from './projects.js';
 
 async function main() {
-  // Check WebGL support
   const hasWebGL = (() => {
     try {
       const c = document.createElement('canvas');
@@ -21,24 +22,33 @@ async function main() {
 
   const { scene, camera, renderer } = initScene();
 
-  // TODO: Scene assembly will be added in later tasks
-  // For now, add a test cube to prove the render pipeline works
-  const { BoxGeometry, Mesh, MeshStandardMaterial } = await import('three');
-  const testGeo = new BoxGeometry(2, 2, 2);
-  const testMat = new MeshStandardMaterial({ color: 0xff4444, roughness: 0.5, metalness: 0.1 });
-  const testCube = new Mesh(testGeo, testMat);
-  testCube.position.set(0, 3, -1);
-  scene.add(testCube);
+  // Build the wall with CSG cavities
+  const { wallGroup, cavityData } = await buildWall(scene, projects, categoryOrder);
+
+  // Store cavity data globally so scroll.js and other modules can use it
+  window.__cavityData = cavityData;
+  window.__wallGroup = wallGroup;
+
+  // Determine scroll bounds from cavity positions
+  const firstX = cavityData[0].worldX;
+  const lastX = cavityData[cavityData.length - 1].worldX;
+  const scrollMinX = firstX - 5;
+  const scrollMaxX = lastX + 5;
+  window.__scrollBounds = { min: scrollMinX, max: scrollMaxX };
+
+  // Start camera at the first cavity
+  camera.position.set(firstX, 4, 6);
+  camera.lookAt(firstX, 4, 0);
 
   // Animation loop
   let lastTime = performance.now();
   function animate(now) {
     requestAnimationFrame(animate);
 
-    const dt = Math.min((now - lastTime) / 1000, 0.1); // cap delta
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
 
-    // Smooth camera update will be driven by scroll.js later
+    // TODO: scroll.js camera update will hook in here
 
     renderer.render(scene, camera);
   }
@@ -49,8 +59,9 @@ async function main() {
   const loadingEl = document.getElementById('loading-screen');
   if (loadingEl) loadingEl.classList.add('hidden');
 
+  console.log(`Wall built with ${cavityData.length} cavities`);
+
   requestAnimationFrame(animate);
-  console.log('Three.js scene initialized');
 }
 
 main();
