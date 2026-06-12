@@ -24,7 +24,7 @@ const WALL_Y_CENTER = 4;
 const CAVITY_SPACING = 2.8;   // horizontal spacing between cavity centers
 const CAVITY_W = 1.6;         // approx cavity width
 const CAVITY_H = 2.0;         // approx cavity height
-const CAVITY_D = 1.2;         // depth into wall
+const CAVITY_D = 1.6;         // depth into wall — deep enough for visible holes
 const START_X = -22;          // leftmost cavity center X
 
 // ── Materials ──────────────────────────────────────────
@@ -198,10 +198,11 @@ export async function buildWall(scene, projects, categoryOrder) {
     }
   }
 
-  // ── Ensure final result has correct material & shadows ─
+  // ── Ensure final result has correct material & position ─
   currentBrush.material = plasterMaterial;
-  currentBrush.castShadow = true;
-  currentBrush.receiveShadow = true;
+  // The CSG evaluator may reset position — ensure wall is centered
+  currentBrush.position.set(0, WALL_Y_CENTER, 0);
+  currentBrush.updateMatrixWorld();
 
   // ── Add wall to scene ────────────────────────────────
   const wallGroup = new THREE.Group();

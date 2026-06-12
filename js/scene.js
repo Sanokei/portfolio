@@ -33,12 +33,12 @@ export function initScene() {
     0.5,                                      // near
     80,                                       // far
   );
-  camera.position.set(0, 4, 6);  // eye level, 6m from wall
+  camera.position.set(0, 4, 3.5);  // eye level, closer to wall
   camera.lookAt(0, 4, 0);
 
   // ── Lighting ─────────────────────────────────────────
   // Soft ambient fill
-  const ambient = new THREE.AmbientLight(0xffe8d0, 0.4);
+  const ambient = new THREE.AmbientLight(0xffe8d0, 0.8);
   scene.add(ambient);
 
   // Hemisphere for subtle sky/ground color variation

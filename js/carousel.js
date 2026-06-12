@@ -10,8 +10,11 @@ const CROSSFADE_DURATION = 0.8;    // seconds for crossfade
 const VIEWPORT_CULL_RANGE = 10;     // world units — pause when camera farther than this
 
 const textureLoader = new THREE.TextureLoader();
-// Required for cross-origin remote images (itch.io, github, etc.)
-textureLoader.crossOrigin = 'anonymous';
+// NOTE: do NOT set crossOrigin='anonymous' here — most remote image hosts
+// (itch.zone, camo.githubusercontent.com, github raw) don't serve
+// Access-Control-Allow-Origin headers, so CORS mode would block loading
+// entirely. Without crossOrigin, images load as dirty <img> elements;
+// WebGL can still use them for same-origin and most CDN-hosted images.
 
 /**
  * Create a hidden <video> element for VideoTexture use.
@@ -48,7 +51,7 @@ function createCarousel(cavityData) {
   if (assets.length === 0) {
     // Placeholder for projects without images
     const placeholderGeo = new THREE.PlaneGeometry(1.0, 0.8);
-    const placeholderMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+    const placeholderMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
     const placeholder = new THREE.Mesh(placeholderGeo, placeholderMat);
     group.add(placeholder);
     return { group, items: [], state: { timer: 0, active: 0, transitioning: false } };
@@ -69,16 +72,21 @@ function createCarousel(cavityData) {
 
     if (asset.type === 'video') {
       const { video, texture } = createVideoElement(asset.src);
-      material = new THREE.MeshBasicMaterial({
+      // MeshStandardMaterial responds to scene lighting (spotlights, ambient)
+      material = new THREE.MeshStandardMaterial({
         map: texture,
+        roughness: 0.5,
+        metalness: 0.0,
         transparent: true,
         opacity: i === 0 ? 1 : 0,
       });
       material.userData = { video };
     } else {
       // Image — loaded async; start transparent, fade in when ready
-      material = new THREE.MeshBasicMaterial({
-        color: 0x444444,
+      material = new THREE.MeshStandardMaterial({
+        color: 0x888888,
+        roughness: 0.5,
+        metalness: 0.0,
         transparent: true,
         opacity: i === 0 ? 1 : 0,
       });
