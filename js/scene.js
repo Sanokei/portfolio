@@ -13,8 +13,10 @@ export function initScene() {
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Shadows disabled to stay within GPU texture-unit limits.
+  // MAX_TEXTURE_IMAGE_UNITS is 16 on integrated GPUs; each shadow map
+  // consumes one unit in every MeshStandardMaterial shader.
+  renderer.shadowMap.enabled = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
