@@ -8,6 +8,7 @@ import { projects, categoryOrder } from './projects.js';
 import { initScroll, setBounds } from './scroll.js';
 import { buildCarousels } from './carousel.js';
 import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js';
+import { buildEnvironment } from './environment.js';
 
 async function main() {
   const hasWebGL = (() => {
@@ -33,6 +34,8 @@ async function main() {
 
   buildHeaderPlaque(scene);
   const plaqueObjects = buildProjectPlaques(scene, cavityData);
+
+  buildEnvironment(scene, projects, categoryOrder);
 
   // Determine scroll bounds from cavity positions
   const firstX = cavityData[0].worldX;
