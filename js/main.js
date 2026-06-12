@@ -6,6 +6,7 @@ import { initScene, resizeRenderer } from './scene.js';
 import { buildWall } from './wall.js';
 import { projects, categoryOrder } from './projects.js';
 import { initScroll, setBounds } from './scroll.js';
+import { buildCarousels } from './carousel.js';
 
 async function main() {
   const hasWebGL = (() => {
@@ -25,6 +26,9 @@ async function main() {
 
   // Build the wall with CSG cavities
   const { wallGroup, cavityData } = await buildWall(scene, projects, categoryOrder);
+
+  // Build carousels inside cavities
+  const { update: updateCarousels } = buildCarousels(scene, cavityData);
 
   // Determine scroll bounds from cavity positions
   const firstX = cavityData[0].worldX;
@@ -46,6 +50,7 @@ async function main() {
     lastTime = now;
 
     scrollCtrl.update(dt);
+    updateCarousels(dt, camera.position.x);
 
     renderer.render(scene, camera);
   }
