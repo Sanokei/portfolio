@@ -5,6 +5,7 @@
 import { initScene, resizeRenderer } from './scene.js';
 import { buildWall } from './wall.js';
 import { projects, categoryOrder } from './projects.js';
+import { initScroll, setBounds } from './scroll.js';
 
 async function main() {
   const hasWebGL = (() => {
@@ -25,20 +26,16 @@ async function main() {
   // Build the wall with CSG cavities
   const { wallGroup, cavityData } = await buildWall(scene, projects, categoryOrder);
 
-  // Store cavity data globally so scroll.js and other modules can use it
-  window.__cavityData = cavityData;
-  window.__wallGroup = wallGroup;
-
   // Determine scroll bounds from cavity positions
   const firstX = cavityData[0].worldX;
   const lastX = cavityData[cavityData.length - 1].worldX;
-  const scrollMinX = firstX - 5;
-  const scrollMaxX = lastX + 5;
-  window.__scrollBounds = { min: scrollMinX, max: scrollMaxX };
+  setBounds(firstX - 5, lastX + 5);
 
   // Start camera at the first cavity
   camera.position.set(firstX, 4, 6);
   camera.lookAt(firstX, 4, 0);
+
+  const scrollCtrl = initScroll(camera);
 
   // Animation loop
   let lastTime = performance.now();
@@ -48,7 +45,7 @@ async function main() {
     const dt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
 
-    // TODO: scroll.js camera update will hook in here
+    scrollCtrl.update(dt);
 
     renderer.render(scene, camera);
   }
