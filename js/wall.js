@@ -1,168 +1,295 @@
-// wall.js — Plaster gallery wall with rock-chunked CSG cavities.
-// Cavity shape inspired by TDM's "Wet stone" shader: a base sphere
-// with smaller spheres subtracted, then vertex noise for organic edges.
+// wall.js - Explicit plaster wall panels with real openings for recessed CRTs.
 
 import * as THREE from 'three';
-import { computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
-import { SUBTRACTION, Brush, Evaluator } from 'three-bvh-csg';
-import { createSpotlight, createCavityLight } from './scene.js';
-
-THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
-THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
-
-const WALL_WIDTH = 50;
-const WALL_HEIGHT = 8;
-const WALL_THICKNESS = 1.0;
-const WALL_Y_CENTER = 3;
-const CAVITY_SPACING = 2.8;
-const CAVITY_W = 1.8;
-const CAVITY_H = 2.2;
-const CAVITY_D = 1.8;
-const START_X = -22;
+import {
+  buildModuleLayout,
+  WALL_HEIGHT,
+  WALL_THICKNESS,
+  WALL_WIDTH,
+  WALL_Y_CENTER,
+} from './layout.js';
 
 const plasterMaterial = new THREE.MeshStandardMaterial({
-  color: 0xf5efe6, roughness: 0.85, metalness: 0.05,
+  color: 0xf6f3ed,
+  roughness: 0.9,
+  metalness: 0,
 });
 
-const interiorMaterial = new THREE.MeshStandardMaterial({
-  color: 0xc0b8a8, roughness: 0.95, metalness: 0.0, side: THREE.DoubleSide,
-});
+let cutSurfaceMaterial = null;
+let rockCavityMaterial = null;
 
-// ── Simple hash noise ──────────────────────────────────
-function hash31(p) {
-  const h = [127.231, 491.7, 718.423].map(v => Math.sin(v * p) * 435.543);
-  return h.map(v => v - Math.floor(v));
-}
+function makeCutTexture(base = '#9f978a') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// ── Rock geometry generator ────────────────────────────
-// Creates a lumpy, organic shape like a chipped-away stone.
-// Base: displaced ellipsoid with random dents.
-function createRockGeometry(w, h, d, seed) {
-  // Start with an ellipsoid (sphere scaled to cavity dims)
-  const baseR = Math.max(w, h, d) / 2;
-  const geo = new THREE.SphereGeometry(baseR, 24, 18);
-  const pos = geo.attributes.position;
-
-  // Scale to approximate cavity width/height/depth
-  const sx = w / (baseR * 2);
-  const sy = h / (baseR * 2);
-  const sz = d / (baseR * 2);
-
-  // Use the seed to perturb each vertex outward/inward
-  for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i);
-    let y = pos.getY(i);
-    let z = pos.getZ(i);
-
-    // Simple 3D noise from hashed sin
-    const nx = x * 0.7 + seed * 0.13;
-    const ny = y * 0.7 + seed * 0.37;
-    const nz = z * 0.7 + seed * 0.61;
-    const noise =
-      Math.sin(nx * 3.7) * Math.cos(ny * 5.1) * Math.sin(nz * 4.3) * 0.3 +
-      Math.sin(nx * 7.1 + 2.3) * Math.cos(nz * 6.7 + 1.1) * 0.2;
-
-    // Displace: mostly outward (positive), some inward
-    const displacement = 1.0 + noise;
-    pos.setXYZ(i, x * displacement * sx, y * displacement * sy, z * displacement * sz);
+  for (let i = 0; i < 3600; i++) {
+    const shade = 86 + Math.floor(Math.random() * 86);
+    const alpha = 0.08 + Math.random() * 0.14;
+    ctx.fillStyle = `rgba(${shade}, ${Math.floor(shade * 0.98)}, ${Math.floor(shade * 0.93)}, ${alpha})`;
+    ctx.fillRect(
+      Math.random() * canvas.width,
+      Math.random() * canvas.height,
+      1 + Math.random() * 3.5,
+      1 + Math.random() * 3.5,
+    );
   }
 
-  geo.computeVertexNormals();
-
-  // Add UVs (required by three-bvh-csg)
-  const uvArr = new Float32Array(pos.count * 2);
-  for (let i = 0; i < pos.count; i++) {
-    uvArr[i * 2] = pos.getX(i) / w + 0.5;
-    uvArr[i * 2 + 1] = pos.getY(i) / h + 0.5;
+  for (let i = 0; i < 90; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const length = 12 + Math.random() * 54;
+    const angle = Math.random() * Math.PI * 2;
+    ctx.strokeStyle = i % 4 === 0 ? 'rgba(52, 47, 42, 0.34)' : 'rgba(220, 213, 198, 0.12)';
+    ctx.lineWidth = 0.6 + Math.random() * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+    ctx.stroke();
   }
-  geo.setAttribute('uv', new THREE.BufferAttribute(uvArr, 2));
 
-  return geo;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1.8, 1.8);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
-// ── Main Builder ───────────────────────────────────────
+function getCutSurfaceMaterial() {
+  if (!cutSurfaceMaterial) {
+    cutSurfaceMaterial = new THREE.MeshStandardMaterial({
+      color: 0xa59d91,
+      map: makeCutTexture(),
+      roughness: 0.98,
+      metalness: 0,
+      flatShading: true,
+    });
+  }
+  return cutSurfaceMaterial;
+}
+
+function getRockCavityMaterial() {
+  if (!rockCavityMaterial) {
+    const texture = makeCutTexture('#a89d8c');
+    rockCavityMaterial = new THREE.MeshStandardMaterial({
+      color: 0x908a80,
+      map: texture,
+      bumpMap: texture,
+      bumpScale: 0.12,
+      roughness: 1,
+      metalness: 0,
+      side: THREE.DoubleSide,
+      flatShading: true,
+    });
+  }
+  return rockCavityMaterial;
+}
+
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function addBox(group, width, height, depth, x, y, z, material = plasterMaterial) {
+  if (width <= 0 || height <= 0) return;
+
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    material,
+  );
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+}
+
+function createRoughCutoutPoints(cd) {
+  const rand = seededRandom(cd.seed);
+  const points = [];
+  const count = 44;
+  const rx = cd.holeW * 0.5;
+  const ry = cd.holeH * 0.5;
+  const wobbleA = rand() * Math.PI * 2;
+  const wobbleB = rand() * Math.PI * 2;
+
+  for (let i = 0; i < count; i++) {
+    const angle = -(i / count) * Math.PI * 2;
+    const chip = (rand() - 0.5) * 0.15;
+    const radius = 1 +
+      Math.sin(angle * 3 + wobbleA) * 0.075 +
+      Math.sin(angle * 7 + wobbleB) * 0.05 +
+      chip;
+    points.push(new THREE.Vector2(
+      cd.worldX + Math.cos(angle) * rx * radius,
+      cd.worldY + Math.sin(angle) * ry * radius,
+    ));
+  }
+
+  return points;
+}
+
+function createWallTileWithCutout(cd, tileTop, tileBottom, cutoutPoints) {
+  const wallLeft = -WALL_WIDTH / 2;
+  const wallRight = WALL_WIDTH / 2;
+  const shape = new THREE.Shape();
+
+  shape.moveTo(wallLeft, tileBottom);
+  shape.lineTo(wallRight, tileBottom);
+  shape.lineTo(wallRight, tileTop);
+  shape.lineTo(wallLeft, tileTop);
+  shape.lineTo(wallLeft, tileBottom);
+
+  const hole = new THREE.Path();
+  cutoutPoints.forEach((point, index) => {
+    if (index === 0) {
+      hole.moveTo(point.x, point.y);
+    } else {
+      hole.lineTo(point.x, point.y);
+    }
+  });
+  hole.closePath();
+  shape.holes.push(hole);
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: WALL_THICKNESS,
+    bevelEnabled: false,
+    curveSegments: 1,
+    steps: 1,
+  });
+  geometry.translate(0, 0, -WALL_THICKNESS / 2);
+  geometry.computeVertexNormals();
+
+  return new THREE.Mesh(geometry, [plasterMaterial, getCutSurfaceMaterial()]);
+}
+
+function addSphericalRockCavity(group, cd, cutoutPoints) {
+  const rand = seededRandom(cd.seed + 911);
+  const segments = cutoutPoints.length;
+  const rings = 9;
+  const vertices = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let ring = 0; ring < rings; ring++) {
+    const t = ring / (rings - 1);
+    const sphereCurve = Math.sin(t * Math.PI);
+    const taper = 1.02 - t * 0.22;
+    const bulge = taper + sphereCurve * 0.34;
+    const z = cd.wallZ - t * cd.cavityDepth;
+
+    for (let i = 0; i < segments; i++) {
+      const point = cutoutPoints[i];
+      const radialNoise = 1 + (rand() - 0.5) * 0.08 + Math.sin((i / segments) * Math.PI * 8 + ring) * 0.025;
+      const dx = point.x - cd.worldX;
+      const dy = point.y - cd.worldY;
+      vertices.push(
+        cd.worldX + dx * bulge * radialNoise,
+        cd.worldY + dy * bulge * radialNoise,
+        z + (rand() - 0.5) * 0.045,
+      );
+      uvs.push(i / segments, t);
+    }
+  }
+
+  for (let ring = 0; ring < rings - 1; ring++) {
+    for (let i = 0; i < segments; i++) {
+      const next = (i + 1) % segments;
+      const a = ring * segments + i;
+      const b = ring * segments + next;
+      const c = (ring + 1) * segments + i;
+      const d = (ring + 1) * segments + next;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geometry, getRockCavityMaterial());
+  mesh.name = `sphere-subtraction-rock-cavity-${cd.project.id}`;
+  group.add(mesh);
+}
+
+function createOpeningWall(cd, tileTop, tileBottom) {
+  const group = new THREE.Group();
+  const cutoutPoints = createRoughCutoutPoints(cd);
+  group.add(createWallTileWithCutout(cd, tileTop, tileBottom, cutoutPoints));
+  addSphericalRockCavity(group, cd, cutoutPoints);
+  return group;
+}
+
+function getModuleBounds(cavityData, index) {
+  const current = cavityData[index];
+  const previous = cavityData[index - 1];
+  const next = cavityData[index + 1];
+
+  return {
+    top: previous
+      ? (previous.worldY + current.worldY) / 2
+      : current.worldY + current.spacing / 2,
+    bottom: next
+      ? (current.worldY + next.worldY) / 2
+      : current.worldY - current.spacing / 2,
+  };
+}
+
+function addEndCaps(wallGroup, cavityData) {
+  const wallTop = WALL_Y_CENTER + WALL_HEIGHT / 2;
+  const wallBottom = WALL_Y_CENTER - WALL_HEIGHT / 2;
+  const topBottom = getModuleBounds(cavityData, 0).top;
+  const bottomTop = getModuleBounds(cavityData, cavityData.length - 1).bottom;
+
+  addBox(
+    wallGroup,
+    WALL_WIDTH,
+    wallTop - topBottom,
+    WALL_THICKNESS,
+    0,
+    (wallTop + topBottom) / 2,
+    0,
+  );
+  addBox(
+    wallGroup,
+    WALL_WIDTH,
+    bottomTop - wallBottom,
+    WALL_THICKNESS,
+    0,
+    (bottomTop + wallBottom) / 2,
+    0,
+  );
+}
+
 export async function buildWall(scene, projects, categoryOrder) {
   const loadingBar = document.getElementById('loading-bar');
   const loadingText = document.getElementById('loading-text');
   const setProgress = (pct, msg) => {
-    if (loadingBar) loadingBar.style.width = Math.min(pct, 100) + '%';
+    if (loadingBar) loadingBar.style.width = `${Math.min(pct, 100)}%`;
     if (loadingText) loadingText.textContent = msg;
   };
-  setProgress(5, 'Building gallery wall...');
 
-  // Wall
-  const wallGeo = new THREE.BoxGeometry(WALL_WIDTH, WALL_HEIGHT, WALL_THICKNESS, 80, 16, 2);
-  let wallBrush = new Brush(wallGeo, plasterMaterial);
-  wallBrush.position.set(0, WALL_Y_CENTER, 0);
-  wallBrush.updateMatrixWorld();
+  setProgress(8, 'Building the plaster wall...');
+  const { modules: cavityData } = buildModuleLayout(projects, categoryOrder);
+  const wallGroup = new THREE.Group();
+  scene.add(wallGroup);
 
-  // Cavity positions
-  const cavityData = [];
-  let cursorX = START_X;
-  for (const category of categoryOrder) {
-    const catProjects = projects.filter(p => p.category === category);
-    for (const project of catProjects) {
-      const worldX = cursorX;
-      const worldY = WALL_Y_CENTER;
-      const wallZ = WALL_THICKNESS / 2;
-      const seed = project.id * 137 + 42;
-      cavityData.push({ project, worldX, worldY, wallZ, cavityDepth: CAVITY_D, seed });
-      cursorX += CAVITY_SPACING;
-    }
-    cursorX += 0.6;
-  }
-
-  // CSG: subtract rock shapes from wall
-  const evaluator = new Evaluator();
+  addEndCaps(wallGroup, cavityData);
 
   for (let i = 0; i < cavityData.length; i++) {
     const cd = cavityData[i];
-    const pct = 10 + Math.round((i / cavityData.length) * 70);
-    setProgress(pct, `Chiseling cavity: ${cd.project.name}...`);
-
-    const rockGeo = createRockGeometry(CAVITY_W, CAVITY_H, CAVITY_D, cd.seed);
-    const rockBrush = new Brush(rockGeo);
-    // Position at cavity center, mid-wall in Z so shape cuts clean through
-    rockBrush.position.set(cd.worldX, cd.worldY, 0);
-    rockBrush.updateMatrixWorld();
-
-    const result = evaluator.evaluate(wallBrush, rockBrush, SUBTRACTION);
-
-    rockGeo.dispose();
-    if (i === 0) wallGeo.dispose();
-    wallBrush = result;
-
-    if (i % 3 === 2) await new Promise(r => setTimeout(r, 0));
+    const bounds = getModuleBounds(cavityData, i);
+    setProgress(12 + Math.round((i / cavityData.length) * 84), `Placing opening: ${cd.project.name}...`);
+    wallGroup.add(createOpeningWall(cd, bounds.top, bounds.bottom));
+    if (i % 4 === 3) await new Promise(resolve => setTimeout(resolve, 0));
   }
 
-  wallBrush.material = plasterMaterial;
-  wallBrush.position.set(0, WALL_Y_CENTER, 0);
-  wallBrush.updateMatrixWorld();
-
-  const wallGroup = new THREE.Group();
-  wallGroup.add(wallBrush);
-
-  // Cavity interiors
-  for (const cd of cavityData) {
-    const backPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(CAVITY_W * 0.9, CAVITY_H * 0.9),
-      interiorMaterial,
-    );
-    backPlane.position.set(cd.worldX, cd.worldY, cd.wallZ - CAVITY_D * 0.5);
-    wallGroup.add(backPlane);
-
-    const cavityLight = createCavityLight(cd.worldX, cd.worldY, cd.wallZ - CAVITY_D * 0.3);
-    wallGroup.add(cavityLight);
-
-    const spotY = WALL_Y_CENTER + WALL_HEIGHT / 2 - 0.5;
-    const spotZ = cd.wallZ + 0.3;
-    const spot = createSpotlight(cd.worldX, spotY, spotZ);
-    spot.target.position.set(cd.worldX, cd.worldY, cd.wallZ - CAVITY_D / 2);
-    wallGroup.add(spot);
-    wallGroup.add(spot.target);
-  }
-
-  scene.add(wallGroup);
-  setProgress(85, 'Polishing the marble...');
+  setProgress(100, 'Wall loaded top to bottom.');
   return { wallGroup, cavityData };
 }
