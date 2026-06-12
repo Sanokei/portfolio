@@ -1,7 +1,7 @@
 // plaque.js - Interactive museum plaques beside each broken opening.
 
 import * as THREE from 'three';
-import { HEADER_Y, PLAQUE_H, PLAQUE_W } from './layout.js';
+import { getLayoutMetrics } from './layout.js';
 
 const ICON_SOURCES = {
   gh: 'img/gh.png',
@@ -90,7 +90,7 @@ function renderHeaderTexture() {
     ctx.font = '82px "Playfair Display SC", Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText("SANO'S PORTFOLIO", width / 2, height / 2 - 22);
+    ctx.fillText('THE PORTFOLIO', width / 2, height / 2 - 22);
 
     ctx.fillStyle = '#5b554d';
     ctx.font = 'italic 31px "EB Garamond", Georgia, serif';
@@ -204,12 +204,13 @@ function renderProjectTexture(project) {
 }
 
 export function buildHeaderPlaque(scene) {
+  const { headerW, headerH, headerY, wallZ } = getLayoutMetrics();
   const texture = renderHeaderTexture();
   const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(7.8, 1.78, 0.08),
+    new THREE.BoxGeometry(headerW, headerH, 0.08),
     makePlaqueMaterials(texture),
   );
-  mesh.position.set(0, HEADER_Y, 0.52);
+  mesh.position.set(0, headerY, wallZ + 0.09);
   scene.add(mesh);
   return mesh;
 }
@@ -221,11 +222,11 @@ export function buildProjectPlaques(scene, cavityData) {
     const cd = cavityData[i];
     const { texture, linkZones } = renderProjectTexture(cd.project);
     const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(PLAQUE_W, PLAQUE_H, 0.055),
+      new THREE.BoxGeometry(cd.plaqueW, cd.plaqueH, 0.055),
       makePlaqueMaterials(texture),
     );
 
-    mesh.position.set(cd.plaqueX, cd.plaqueY, cd.wallZ + 0.065);
+    mesh.position.set(cd.plaqueX, cd.plaqueY, cd.wallZ + 0.075);
     scene.add(mesh);
     plaqueObjects.push({ mesh, project: cd.project, linkZones });
   }

@@ -7,6 +7,27 @@ const CHANNEL_FLIP_DURATION = 0.55;
 const VIEWPORT_CULL_RANGE = 6.5;
 const textureLoader = new THREE.TextureLoader();
 
+const RETRO_CHANNELS = [
+  {
+    key: 'cartoons',
+    label: 'CARTOONS',
+    color: '#f3c950',
+    lines: ['Saturday Morning', 'Animated Shorts', 'After School Block'],
+  },
+  {
+    key: 'commercials',
+    label: 'COMMERCIALS',
+    color: '#ef7c45',
+    lines: ['Toy Ads', 'Cereal Spots', 'Station Breaks'],
+  },
+  {
+    key: 'sports',
+    label: 'SPORTS',
+    color: '#70b879',
+    lines: ['Game of the Week', 'Halftime Report', 'Scoreboard'],
+  },
+];
+
 const screenVertex = `
   varying vec2 vUv;
   void main() {
@@ -80,6 +101,47 @@ function createStaticTexture() {
   });
 }
 
+function createRetroChannelTexture(channel) {
+  return createCanvasTexture((ctx, width, height) => {
+    ctx.fillStyle = '#08100d';
+    ctx.fillRect(0, 0, width, height);
+
+    const bands = ['#d84545', '#dfb64b', '#5d9c62', '#4c7fb8', '#644f94'];
+    for (let i = 0; i < bands.length; i++) {
+      ctx.fillStyle = bands[i];
+      ctx.fillRect(i * width / bands.length, 0, width / bands.length + 1, height * 0.18);
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let y = 0; y < height; y += 5) ctx.fillRect(0, y, width, 2);
+
+    for (let i = 0; i < 800; i++) {
+      const n = 80 + Math.random() * 120;
+      ctx.fillStyle = `rgba(${n}, ${n}, ${n * 0.85}, ${0.035 + Math.random() * 0.08})`;
+      ctx.fillRect(Math.random() * width, Math.random() * height, 1.5, 1.5);
+    }
+
+    ctx.fillStyle = channel.color;
+    ctx.font = '700 28px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText("MY 70'S TV", width / 2, height * 0.36);
+
+    ctx.fillStyle = '#f8f2d5';
+    ctx.font = '900 42px "Playfair Display SC", Georgia, serif';
+    ctx.fillText(channel.label, width / 2, height * 0.53);
+
+    ctx.font = '17px "Inter", sans-serif';
+    ctx.fillStyle = '#d8d0b9';
+    channel.lines.forEach((line, index) => {
+      ctx.fillText(line.toUpperCase(), width / 2, height * 0.67 + index * 24);
+    });
+
+    ctx.strokeStyle = 'rgba(248, 242, 213, 0.7)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(18, 18, width - 36, height - 36);
+  });
+}
+
 function createTextureForAsset(asset, project) {
   if (!asset) return { texture: createStaticTexture(), video: null };
 
@@ -131,7 +193,9 @@ function makeCrtShell(cd, screenMaterial) {
   const group = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.72, metalness: 0.04 });
   const trimMat = new THREE.MeshStandardMaterial({ color: 0x11100e, roughness: 0.68, metalness: 0.05 });
-  const knobMat = new THREE.MeshStandardMaterial({ color: 0xc7bda8, roughness: 0.52, metalness: 0.2 });
+  const knobMat = new THREE.MeshStandardMaterial({ color: 0xc7bda8, emissive: 0x000000, roughness: 0.52, metalness: 0.2 });
+  const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const channelButtons = [];
 
   const body = new THREE.Mesh(new THREE.BoxGeometry(cd.crtW + 0.34, cd.crtH + 0.28, 0.32), bodyMat);
   body.position.z = -0.035;
@@ -150,43 +214,75 @@ function makeCrtShell(cd, screenMaterial) {
   group.add(rightPanel);
 
   for (let i = 0; i < 3; i++) {
-    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.035, 20), knobMat);
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.035, 20), knobMat.clone());
     knob.rotation.x = Math.PI / 2;
     knob.position.set(cd.crtW * 0.5 + 0.17, 0.26 - i * 0.25, 0.24);
     group.add(knob);
+
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.06, 18), hitMat);
+    hit.rotation.x = Math.PI / 2;
+    hit.position.copy(knob.position);
+    hit.userData.visibleKnob = knob;
+    group.add(hit);
+    channelButtons.push({ hit, knob, channel: RETRO_CHANNELS[i] });
   }
 
-  const antennaMat = new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.45, metalness: 0.4 });
-  const leftAntenna = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.56, 8), antennaMat);
-  leftAntenna.position.set(-0.25, cd.crtH * 0.5 + 0.28, -0.02);
-  leftAntenna.rotation.z = -0.42;
-  const rightAntenna = leftAntenna.clone();
-  rightAntenna.position.x = 0.25;
-  rightAntenna.rotation.z = 0.42;
-  group.add(leftAntenna, rightAntenna);
+  return { group, screen, channelButtons };
+}
 
-  return { group, screen };
+function setRetroChannel(crt, channelIndex) {
+  const channel = crt.retroChannels[channelIndex];
+  if (!channel) return;
+
+  pauseVideos(crt);
+  crt.state.retroMode = true;
+  crt.state.staticBurst = CHANNEL_FLIP_DURATION;
+  crt.state.retroChannel = channel.key;
+  crt.material.uniforms.uMap.value = channel.texture;
+
+  for (const button of crt.buttons) {
+    const active = button.channel.key === channel.key;
+    button.knob.material.color.set(active ? 0xffd991 : 0xc7bda8);
+    button.knob.material.emissive.set(active ? 0x6a3f12 : 0x000000);
+  }
 }
 
 function createCrt(cd) {
   const assets = cd.project.assets.length ? cd.project.assets : [null];
   const media = assets.map(asset => createTextureForAsset(asset, cd.project));
   const material = makeScreenMaterial(media[0].texture);
-  const { group } = makeCrtShell(cd, material);
+  const { group, channelButtons } = makeCrtShell(cd, material);
   group.position.set(cd.worldX, cd.worldY, cd.mediaZ);
 
-  return {
+  const crt = {
     group,
     material,
     media,
+    retroChannels: RETRO_CHANNELS.map(channel => ({
+      ...channel,
+      texture: createRetroChannelTexture(channel),
+    })),
+    buttons: channelButtons,
     state: {
       timer: Math.random() * CYCLE_INTERVAL,
       active: 0,
       flipping: false,
       flipTimer: 0,
       pending: 0,
+      retroMode: false,
+      retroChannel: null,
+      staticBurst: 0,
     },
   };
+
+  channelButtons.forEach((button, index) => {
+    button.hit.userData.crtButton = {
+      label: `70s ${button.channel.label.toLowerCase()}`,
+      onClick: () => setRetroChannel(crt, index),
+    };
+  });
+
+  return crt;
 }
 
 function pauseVideos(crt) {
@@ -214,9 +310,11 @@ export function buildCarousels(scene, cavityData) {
     scene.add(crt.group);
     return crt;
   });
+  const buttons = crts.flatMap(crt => crt.buttons.map(button => button.hit));
 
   return {
     carousels: crts,
+    buttons,
     update(dt, cameraY) {
       for (const crt of crts) {
         const visible = Math.abs(crt.group.position.y - cameraY) <= VIEWPORT_CULL_RANGE;
@@ -229,6 +327,17 @@ export function buildCarousels(scene, cavityData) {
 
         const uniforms = crt.material.uniforms;
         uniforms.uTime.value += dt;
+        if (crt.state.staticBurst > 0) {
+          crt.state.staticBurst = Math.max(0, crt.state.staticBurst - dt);
+          uniforms.uStatic.value = Math.sin((crt.state.staticBurst / CHANNEL_FLIP_DURATION) * Math.PI) * 0.75;
+        }
+
+        if (crt.state.retroMode) {
+          pauseVideos(crt);
+          if (crt.state.staticBurst <= 0) uniforms.uStatic.value = 0.045;
+          continue;
+        }
+
         syncActiveVideo(crt);
 
         if (crt.media.length < 2) {
@@ -262,6 +371,21 @@ export function buildCarousels(scene, cavityData) {
             state.flipTimer = 0;
           }
         }
+      }
+    },
+    dispose() {
+      for (const crt of crts) {
+        pauseVideos(crt);
+        for (const item of crt.media) {
+          if (item.video) {
+            item.video.pause();
+            item.video.removeAttribute('src');
+            item.video.load();
+          }
+          if (item.texture) item.texture.dispose();
+        }
+        crt.material.dispose();
+        for (const channel of crt.retroChannels) channel.texture.dispose();
       }
     },
   };
