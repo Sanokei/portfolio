@@ -47,8 +47,8 @@ export function initScene() {
   const key = new THREE.DirectionalLight(0xffd4a0, 1.5);
   key.position.set(20, 12, 4);
   key.castShadow = true;
-  key.shadow.mapSize.width = 2048;
-  key.shadow.mapSize.height = 2048;
+  key.shadow.mapSize.width = 1024;
+  key.shadow.mapSize.height = 1024;
   key.shadow.camera.near = 0.5;
   key.shadow.camera.far = 80;
   key.shadow.camera.left = -30;
@@ -75,10 +75,10 @@ export function resizeRenderer(renderer, camera) {
 export function createSpotlight(x, y, z) {
   const spot = new THREE.SpotLight(0xffd4a0, 2, 8, Math.PI / 5, 0.3, 0.5);
   spot.position.set(x, y, z);
-  spot.castShadow = true;
-  spot.shadow.mapSize.width = 512;
-  spot.shadow.mapSize.height = 512;
-  spot.shadow.bias = -0.0005;
+  // Shadows disabled on individual spotlights to stay under GPU texture-unit
+  // limits (each shadow map consumes one unit). Only the main directional
+  // light casts shadows.
+  spot.castShadow = false;
   return spot;
 }
 

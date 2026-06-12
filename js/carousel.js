@@ -10,6 +10,8 @@ const CROSSFADE_DURATION = 0.8;    // seconds for crossfade
 const VIEWPORT_CULL_RANGE = 10;     // world units — pause when camera farther than this
 
 const textureLoader = new THREE.TextureLoader();
+// Required for cross-origin remote images (itch.io, github, etc.)
+textureLoader.crossOrigin = 'anonymous';
 
 /**
  * Create a hidden <video> element for VideoTexture use.
