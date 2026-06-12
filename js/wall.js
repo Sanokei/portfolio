@@ -98,7 +98,22 @@ function createJaggedVolume(w, h, d, seed) {
     points.push(new THREE.Vector3(x, y, z));
   }
 
-  return new ConvexGeometry(points);
+  const geo = new ConvexGeometry(points);
+
+  // ConvexGeometry lacks UVs, but three-bvh-csg requires the uv attribute
+  // on all geometries. Generate a placeholder UV set (values don't matter
+  // for the subtraction shape — only the wall's UVs survive the CSG).
+  const posCount = geo.attributes.position.count;
+  const uvArr = new Float32Array(posCount * 2);
+  // Fill with a simple planar projection so the attribute isn't zeroed
+  for (let i = 0; i < posCount; i++) {
+    const ix = i * 3;
+    uvArr[i * 2] = (geo.attributes.position.array[ix] / w) + 0.5;
+    uvArr[i * 2 + 1] = (geo.attributes.position.array[ix + 1] / h) + 0.5;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvArr, 2));
+
+  return geo;
 }
 
 // ── Main Builder ───────────────────────────────────────
