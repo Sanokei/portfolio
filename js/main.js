@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { initScene, positionCamera, resizeRenderer } from './scene.js?v=minimal-loader';
 import { buildWall, buildHeaderBackdrop } from './wall.js?v=minimal-loader';
-import { buildWallDecals } from './decals.js?v=wall-decals';
+import { buildWallDecals } from './decals.js?v=museum-signs';
 import { projects, categoryOrder } from './projects.js?v=minimal-loader';
 import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
 import { buildCarousels } from './carousel.js?v=minimal-loader';
@@ -147,17 +147,28 @@ async function main() {
   function revealMuseum() {
     const loadingFadeMs = loadingEl ? INTRO_TIMING.loadingFadeMs : 0;
     const postLoadingDelayMs = loadingEl ? INTRO_TIMING.postLoadingDelayMs : 0;
-    const letterboxMs = letterboxBars ? INTRO_TIMING.letterboxMs : 0;
     const letterboxStartMs = loadingFadeMs + postLoadingDelayMs;
-    const scrollReadyMs = letterboxStartMs + letterboxMs + INTRO_TIMING.promptDelayMs;
+    let promptQueued = false;
+
+    function queuePrompt() {
+      if (promptQueued) return;
+      promptQueued = true;
+      window.setTimeout(enableScrollAndPrompt, INTRO_TIMING.promptDelayMs);
+    }
 
     if (loadingEl) loadingEl.classList.add('hidden');
     if (letterboxBars) {
+      const bottomBar = letterboxBars.querySelector('.letterbox-bar-bottom');
+      bottomBar?.addEventListener('transitionend', (event) => {
+        if (event.propertyName === 'transform') queuePrompt();
+      }, { once: true });
       window.setTimeout(() => {
         letterboxBars.classList.add('visible');
       }, letterboxStartMs);
+      window.setTimeout(queuePrompt, letterboxStartMs + INTRO_TIMING.letterboxMs + 120);
+    } else {
+      queuePrompt();
     }
-    window.setTimeout(enableScrollAndPrompt, scrollReadyMs);
   }
 
   revealMuseum();

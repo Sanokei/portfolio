@@ -6,12 +6,8 @@ import { getLayoutMetrics } from './layout.js';
 const DECAL_Z_OFFSET = 0.105;
 
 const DECAL_PLACEMENTS = [
-  { afterId: 2, kind: 'rules', side: -1, rotate: -0.045 },
-  { afterId: 4, kind: 'restrooms', side: 1, rotate: 0.02 },
-  { afterId: 8, kind: 'giftShop', side: -1, rotate: 0.028 },
-  { afterId: 10, kind: 'doNotTap', side: 1, rotate: -0.032 },
-  { afterId: 12, kind: 'youAreHere', side: -1, rotate: 0.018 },
-  { afterId: 15, kind: 'exitEventually', side: 1, rotate: -0.018 },
+  { afterId: 2, kind: 'rules', side: -1, rotate: 0 },
+  { afterId: 4, kind: 'restrooms', side: 1, rotate: 0 },
 ];
 
 const decalMaterials = new Map();
@@ -174,6 +170,21 @@ function drawArrow(ctx, x, y, width, right) {
   ctx.restore();
 }
 
+function roundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width * 0.5, height * 0.5);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 function drawRulesTexture() {
   return makeTransparentTexture(780, 520, (ctx, width) => {
     setInk(ctx);
@@ -181,32 +192,87 @@ function drawRulesTexture() {
     drawCupIcon(ctx, 260, 86, 90);
     drawSleepIcon(ctx, 395, 86, 90);
 
-    ctx.font = '700 43px Inter, Arial, sans-serif';
+    ctx.font = '39px "Comic Sans MS", "Trebuchet MS", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText('No flash photography', 70, 162);
     ctx.fillText('No eating or drinking', 70, 213);
     ctx.fillText('No sitting or sleeping', 70, 264);
 
-    ctx.save();
-    ctx.translate(88, 386);
-    ctx.rotate(-0.09);
-    ctx.font = '700 42px Inter, Arial, sans-serif';
-    ctx.fillText('Please do not touch', 0, 0);
-    ctx.fillText('the artworks', 28, 48);
-    ctx.restore();
+    ctx.font = '39px "Comic Sans MS", "Trebuchet MS", sans-serif';
+    ctx.fillText('Please do not touch', 88, 386);
+    ctx.fillText('the artworks', 88, 434);
   });
 }
 
 function drawRestroomTexture() {
-  return makeTransparentTexture(720, 270, (ctx) => {
-    drawPerson(ctx, 112, 118, 150, false);
-    drawPerson(ctx, 232, 118, 150, true);
-    drawArrow(ctx, 488, 128, 260, true);
-    setInk(ctx);
-    ctx.font = '800 42px Inter, Arial, sans-serif';
+  return makeTransparentTexture(720, 960, (ctx, width, height) => {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 8;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = '#0c5b8f';
+    roundedRect(ctx, 28, 26, width - 64, height - 66, 48);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 2;
+    roundedRect(ctx, 28, 26, width - 64, height - 66, 48);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
-    ctx.fillText('RESTROOMS', 300, 245);
+    ctx.textBaseline = 'alphabetic';
+
+    ctx.beginPath();
+    ctx.arc(257, 190, 44, 0, Math.PI * 2);
+    ctx.arc(455, 190, 44, 0, Math.PI * 2);
+    ctx.fill();
+
+    roundedRect(ctx, 172, 250, 170, 244, 46);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(172, 342);
+    ctx.lineTo(124, 506);
+    ctx.quadraticCurveTo(116, 536, 143, 546);
+    ctx.quadraticCurveTo(171, 555, 181, 523);
+    ctx.lineTo(220, 385);
+    ctx.lineTo(293, 385);
+    ctx.lineTo(333, 523);
+    ctx.quadraticCurveTo(343, 555, 371, 546);
+    ctx.quadraticCurveTo(398, 536, 390, 506);
+    ctx.lineTo(342, 342);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(219, 492, 42, 150);
+    ctx.fillRect(274, 492, 42, 150);
+
+    roundedRect(ctx, 375, 250, 168, 380, 42);
+    ctx.fill();
+    ctx.fillRect(415, 468, 47, 174);
+    ctx.fillRect(484, 468, 47, 174);
+    roundedRect(ctx, 338, 314, 48, 156, 22);
+    roundedRect(ctx, 532, 314, 48, 156, 22);
+    ctx.fill();
+
+    ctx.font = '74px Arial, Helvetica, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('RESTROOM', width * 0.5, 755);
+
+    ctx.beginPath();
+    ctx.moveTo(218, 820);
+    ctx.lineTo(431, 820);
+    ctx.lineTo(431, 782);
+    ctx.lineTo(520, 848);
+    ctx.lineTo(431, 914);
+    ctx.lineTo(431, 876);
+    ctx.lineTo(218, 876);
+    ctx.closePath();
+    ctx.fill();
   });
 }
 
@@ -301,7 +367,7 @@ function getMaterial(kind) {
 function getTemplateSize(kind) {
   const sizes = {
     rules: { width: 1.82, height: 1.22 },
-    restrooms: { width: 1.42, height: 0.54 },
+    restrooms: { width: 0.92, height: 1.22 },
     giftShop: { width: 1.48, height: 0.54 },
     doNotTap: { width: 1.36, height: 0.54 },
     youAreHere: { width: 1.18, height: 0.54 },
