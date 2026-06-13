@@ -189,11 +189,11 @@ function drawRulesTexture() {
     ctx.fillText('No sitting or sleeping', 70, 264);
 
     ctx.save();
-    ctx.translate(width * 0.52, 386);
+    ctx.translate(88, 386);
     ctx.rotate(-0.09);
     ctx.font = '700 42px Inter, Arial, sans-serif';
-    ctx.fillText('Please do not touch', -230, 0);
-    ctx.fillText('the artworks', -205, 48);
+    ctx.fillText('Please do not touch', 0, 0);
+    ctx.fillText('the artworks', 28, 48);
     ctx.restore();
   });
 }

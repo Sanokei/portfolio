@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { initScene, positionCamera, resizeRenderer } from './scene.js?v=minimal-loader';
 import { buildWall, buildHeaderBackdrop } from './wall.js?v=minimal-loader';
-import { buildWallDecals } from './decals.js?v=minimal-loader';
+import { buildWallDecals } from './decals.js?v=wall-decals';
 import { projects, categoryOrder } from './projects.js?v=minimal-loader';
 import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
 import { buildCarousels } from './carousel.js?v=minimal-loader';
