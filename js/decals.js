@@ -248,30 +248,125 @@ function drawRulesTexture() {
   });
 }
 
+function drawRestroomNormalMap() {
+  const width = 728;
+  const height = 970;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  const imgData = ctx.createImageData(width, height);
+  const data = imgData.data;
+
+  const R = 48; // corner radius
+  const B = 24; // bevel width
+  const maxTilt = 0.75; // max tilt of normal
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = 0;
+      let dy = 0;
+      let isCorner = false;
+
+      // Determine region
+      if (x < R && y < R) {
+        dx = x - R;
+        dy = y - R;
+        isCorner = true;
+      } else if (x > width - R && y < R) {
+        dx = x - (width - R);
+        dy = y - R;
+        isCorner = true;
+      } else if (x < R && y > height - R) {
+        dx = x - R;
+        dy = y - (height - R);
+        isCorner = true;
+      } else if (x > width - R && y > height - R) {
+        dx = x - (width - R);
+        dy = y - (height - R);
+        isCorner = true;
+      } else {
+        // Straight edges
+        if (x < B) {
+          dx = x - B;
+        } else if (x > width - B) {
+          dx = x - (width - B);
+        }
+        if (y < B) {
+          dy = y - B;
+        } else if (y > height - B) {
+          dy = y - (height - B);
+        }
+      }
+
+      let nx = 0;
+      let ny = 0;
+      let nz = 1;
+
+      if (isCorner) {
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const innerR = R - B;
+        if (dist > innerR) {
+          const t = Math.min(1.0, (dist - innerR) / B);
+          const angle = Math.atan2(dy, dx);
+          nx = Math.cos(angle) * maxTilt * t;
+          ny = -Math.sin(angle) * maxTilt * t; // Flip Y for WebGL Y-up normals
+          nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+        }
+      } else {
+        if (dx !== 0 || dy !== 0) {
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            const t = Math.min(1.0, len / B);
+            nx = (dx / len) * maxTilt * t;
+            ny = -(dy / len) * maxTilt * t; // Flip Y
+            nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+          }
+        }
+      }
+
+      const r = Math.round((nx + 1) * 127.5);
+      const g = Math.round((ny + 1) * 127.5);
+      const b = Math.round((nz + 1) * 127.5);
+
+      const idx = (y * width + x) * 4;
+      data[idx] = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  return texture;
+}
+
 const textureLoader = new THREE.TextureLoader();
 let restroomTexture = null;
-let restroomMaterials = null;
+let restroomMaterial = null;
 
-function getRestroomMaterials() {
-  if (!restroomMaterials) {
+function getRestroomMaterial() {
+  if (!restroomMaterial) {
     restroomTexture = textureLoader.load('img/restroom_sign.png');
     restroomTexture.colorSpace = THREE.SRGBColorSpace;
 
-    const sideMat = new THREE.MeshStandardMaterial({
-      color: 0x0c5b8f,
-      roughness: 0.15,
-      metalness: 0.05,
-    });
-    const frontMat = new THREE.MeshStandardMaterial({
+    const normalTexture = drawRestroomNormalMap();
+
+    restroomMaterial = new THREE.MeshStandardMaterial({
       map: restroomTexture,
+      normalMap: normalTexture,
+      normalScale: new THREE.Vector2(1.5, 1.5),
       roughness: 0.15,
       metalness: 0.05,
       transparent: true,
     });
-
-    restroomMaterials = [sideMat, sideMat, sideMat, sideMat, frontMat, sideMat];
   }
-  return restroomMaterials;
+  return restroomMaterial;
 }
 
 function drawGiftShopTexture() {
@@ -352,7 +447,7 @@ function drawExitEventuallyTexture() {
 
 function getMaterial(kind) {
   if (kind === 'restrooms') {
-    return getRestroomMaterials();
+    return getRestroomMaterial();
   }
   const factories = {
     rules: drawRulesTexture,
@@ -424,31 +519,17 @@ export function buildWallDecals(scene, cavityData) {
     const width = template.width * scale;
     const height = template.height * scale;
 
-    let mesh;
-    if (placement.kind === 'restrooms') {
-      const depth = 0.06 * scale;
-      mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, depth),
-        getMaterial(placement.kind),
-      );
-      mesh.position.set(
-        getDecalX(placement.side, width, metrics),
-        gap.centerY,
-        gap.current.wallZ + depth / 2 + 0.015,
-      );
-    } else {
-      mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(width, height),
-        getMaterial(placement.kind),
-      );
-      mesh.position.set(
-        getDecalX(placement.side, width, metrics),
-        gap.centerY,
-        gap.current.wallZ + DECAL_Z_OFFSET,
-      );
-      mesh.renderOrder = 4;
-    }
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height),
+      getMaterial(placement.kind),
+    );
+    mesh.position.set(
+      getDecalX(placement.side, width, metrics),
+      gap.centerY,
+      gap.current.wallZ + DECAL_Z_OFFSET,
+    );
     mesh.rotation.z = placement.rotate;
+    mesh.renderOrder = 4;
     group.add(mesh);
   }
 
