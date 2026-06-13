@@ -5,7 +5,10 @@ import * as THREE from 'three';
 const SCROLL_SENSITIVITY = 0.015;
 const EASING = 0.08;
 const DRAG_THRESHOLD_PX = 4;
-const SNAP_IDLE_MS = 4000;
+const SNAP_IDLE_MS = 2000;
+const SNAP_DIRECTION_TIE_RATIO = 0.075;
+const SCROLL_DIRECTION_UP = 1;
+const SCROLL_DIRECTION_DOWN = -1;
 export const SCROLL_INPUT_EVENT = 'portfolio-scroll-input';
 
 let targetY = 0;
@@ -25,11 +28,11 @@ let hasTouchScrolled = false;
 let suppressNextClick = false;
 let clickSuppressTimer = null;
 let styleEl = null;
+let lastScrollDirection = 0;
 
 function onWheel(e) {
   e.preventDefault();
-  targetY -= e.deltaY * SCROLL_SENSITIVITY;
-  targetY = THREE.MathUtils.clamp(targetY, bounds.min, bounds.max);
+  setTargetYFromScroll(targetY - e.deltaY * SCROLL_SENSITIVITY);
   handleScrollInput();
 }
 
@@ -89,11 +92,7 @@ export function initScroll(camera, surface = document.getElementById('canvas')) 
   window.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
       const dy = touchStartY - e.touches[0].clientY;
-      targetY = THREE.MathUtils.clamp(
-        touchStartTarget - dy * SCROLL_SENSITIVITY,
-        bounds.min,
-        bounds.max,
-      );
+      setTargetYFromScroll(touchStartTarget - dy * SCROLL_SENSITIVITY);
       hasTouchScrolled = true;
       handleScrollInput();
     }
@@ -144,11 +143,7 @@ function onPointerMove(e) {
   dragSurface?.classList.add('drag-scroll-active');
   e.preventDefault();
 
-  targetY = THREE.MathUtils.clamp(
-    dragStartTarget - dy * SCROLL_SENSITIVITY,
-    bounds.min,
-    bounds.max,
-  );
+  setTargetYFromScroll(dragStartTarget - dy * SCROLL_SENSITIVITY);
   handleScrollInput();
 }
 
@@ -201,6 +196,18 @@ function emitScrollInput() {
   window.dispatchEvent(new Event(SCROLL_INPUT_EVENT));
 }
 
+function setTargetYFromScroll(nextTargetY) {
+  const previousTargetY = targetY;
+  targetY = THREE.MathUtils.clamp(nextTargetY, bounds.min, bounds.max);
+
+  const deltaY = targetY - previousTargetY;
+  if (Math.abs(deltaY) < Number.EPSILON) return;
+
+  lastScrollDirection = deltaY < 0
+    ? SCROLL_DIRECTION_DOWN
+    : SCROLL_DIRECTION_UP;
+}
+
 function queueSnapToProject() {
   clearSnapTimer();
   snapIdleTimer = window.setTimeout(() => {
@@ -218,11 +225,46 @@ function snapToNearestProject() {
   if (isPointerDown || isTouching) return;
   if (!snapPoints.length || targetY > snapActivationMaxY) return;
 
-  const nearest = snapPoints.reduce((best, point) => (
-    Math.abs(point - targetY) < Math.abs(best - targetY) ? point : best
-  ), snapPoints[0]);
+  const nearest = getDirectionalNearestSnapPoint(targetY);
 
   targetY = THREE.MathUtils.clamp(nearest, bounds.min, bounds.max);
+}
+
+function getDirectionalNearestSnapPoint(centerY) {
+  if (snapPoints.length === 1) return snapPoints[0];
+
+  let nearest = snapPoints[0];
+  let nearestDistance = Math.abs(nearest - centerY);
+  let secondNearest = null;
+  let secondNearestDistance = Number.POSITIVE_INFINITY;
+
+  for (let i = 1; i < snapPoints.length; i++) {
+    const point = snapPoints[i];
+    const distance = Math.abs(point - centerY);
+
+    if (distance < nearestDistance) {
+      secondNearest = nearest;
+      secondNearestDistance = nearestDistance;
+      nearest = point;
+      nearestDistance = distance;
+    } else if (distance < secondNearestDistance) {
+      secondNearest = point;
+      secondNearestDistance = distance;
+    }
+  }
+
+  if (secondNearest === null || lastScrollDirection === 0) return nearest;
+
+  const pairGap = Math.abs(nearest - secondNearest);
+  const distanceDifference = Math.abs(nearestDistance - secondNearestDistance);
+  const isDirectionalTie = pairGap > 0 &&
+    distanceDifference / pairGap < SNAP_DIRECTION_TIE_RATIO;
+
+  if (!isDirectionalTie) return nearest;
+
+  return lastScrollDirection === SCROLL_DIRECTION_DOWN
+    ? Math.min(nearest, secondNearest)
+    : Math.max(nearest, secondNearest);
 }
 
 function ensureDragStyles() {

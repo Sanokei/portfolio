@@ -1,9 +1,9 @@
 // layout.js - Shared responsive measurements for the vertical museum wall.
 
 export const WALL_WIDTH = 16;
-export const WALL_HEIGHT = 92;
+export const WALL_HEIGHT = 128;
 export const WALL_THICKNESS = 2.35;
-export const WALL_Y_CENTER = -32;
+export const WALL_Y_CENTER = -50;
 
 // headerY is now computed in getLayoutMetrics() so it stays
 // anchored to the wall top regardless of wall dimension changes.

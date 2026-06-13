@@ -1,4 +1,4 @@
-// projects.js — Complete project data for all 16 portfolio entries.
+// projects.js — Complete project data for all 22 portfolio entries.
 // Each project maps to one cavity in the museum wall.
 // Fields:
 //   id          — unique numeric ID
@@ -124,6 +124,60 @@ export const projects = [
       { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMTI3MzMwMS8xNTY0ODMzNi5wbmc=/original/W%2BKzn9.png' },
     ],
   },
+  {
+    id: 17,
+    name: 'We Mice',
+    category: 'Games',
+    subtitle: '3D Multiplayer Parkour (WIP)',
+    description:
+      'An in-development 3D multiplayer parkour game where players build a course ' +
+      'on the fly, then race from the start flag to the goal while inconveniencing each other.',
+    tags: ['Development', 'Design', 'Multiplayer', '3D'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/we-mice', icon: 'itchio' },
+    ],
+    assets: [
+      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzIyOS5wbmc=/original/KXO1D2.png' },
+      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzMy5wbmc=/original/%2Fciphn.png' },
+      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzNC5wbmc=/original/jyCLWH.png' },
+    ],
+  },
+  {
+    id: 18,
+    name: 'Fish out of Water',
+    category: 'Games',
+    subtitle: 'Video Game, Narrative, Workplace',
+    description:
+      'A fish leaves the suburbs for the big city and lands a first job at a human ' +
+      'canning factory, weighing moral decisions while trying not to get fired.',
+    tags: ['Development', 'Writing', 'Design'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/fish-out-of-water', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/fish-out-of-water', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'image', src: 'https://img.itch.zone/aW1nLzE5MDcxODU4LnBuZw==/original/BvpEq%2F.png' },
+    ],
+  },
+  {
+    id: 19,
+    name: 'Handjob: The Blower Gallery',
+    category: 'Games',
+    subtitle: 'AI FMV Game Proof of Concept',
+    description:
+      'A proof of concept for an AI FMV game about anthropomorphic hands planning ' +
+      'and executing a heist together, then dealing with its aftermath.',
+    tags: ['Development', 'AI', 'FMV', 'Design'],
+    links: [
+      { label: 'GitHub', url: 'https://github.com/Sanokei/Handjob-The-Blower-Gallery', icon: 'gh' },
+      { label: 'Media', url: 'https://github.com/Sanokei/Handjob-The-Blower-Gallery/tree/main/Assets/Art/Intro', icon: 'web' },
+    ],
+    assets: [
+      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Truck.mov' },
+      { type: 'image', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/_Table.png' },
+      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Heist.mov' },
+    ],
+  },
 
   // ── WEBSITES ───────────────────────────────────────────
   {
@@ -211,6 +265,35 @@ export const projects = [
       { type: 'image', src: 'img/clamtap2.png' },
     ],
   },
+  {
+    id: 20,
+    name: 'Art Allergy',
+    category: 'Websites',
+    subtitle: 'Independent Creative House',
+    description:
+      'An independent creative house for experimental publishing, games, films, ' +
+      'prints, and creator-led projects.',
+    tags: ['Web Development', 'Design', 'Creative Direction'],
+    links: [
+      { label: 'Website', url: 'https://artallergy.com/', icon: 'web' },
+    ],
+    assets: [],
+  },
+  {
+    id: 21,
+    name: 'Index of Babel',
+    category: 'Websites',
+    subtitle: 'Retro Directory Index, ARG, WIP',
+    description:
+      'A retro Apache-style directory index backed by SpaceTimeDB, where dormant ' +
+      'directory blueprints generate metadata and file bodies materialize only when clicked.',
+    tags: ['Development', 'Systems', 'ARG'],
+    links: [
+      { label: 'Website', url: 'https://indexofbabel.com/', icon: 'web' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/indexofbabel', icon: 'gh' },
+    ],
+    assets: [],
+  },
 
   // ── PROGRAMS ───────────────────────────────────────────
   {
@@ -243,6 +326,20 @@ export const projects = [
       { type: 'image', src: 'https://github.com/Sanokei/David-The-Duck/raw/main/resources/images/david_the_duck_logo.jpg' },
       { type: 'image', src: 'img/GifODavid.gif' },
     ],
+  },
+  {
+    id: 22,
+    name: 'TrainEngine',
+    category: 'Programs',
+    subtitle: 'Visual Novel Engine, Kaplay',
+    description:
+      'A visual novel engine built on the Kaplay framework, designed to support ' +
+      'Steamy-style VN projects and plugin-driven UI tooling.',
+    tags: ['Development', 'Tools', 'Kaplay'],
+    links: [
+      { label: 'GitHub', url: 'https://github.com/Sanokei/TrainEngine', icon: 'gh' },
+    ],
+    assets: [], // screenshots to be added later
   },
 
   // ── VIDEOS ─────────────────────────────────────────────
