@@ -248,80 +248,14 @@ function drawRulesTexture() {
   });
 }
 
-function drawRestroomTexture() {
-  return makeTransparentTexture(728, 970, (ctx, width, height) => {
-    // 1. Solid blue background matching the sideMat color (0x0c5b8f)
-    ctx.fillStyle = '#0c5b8f';
-    ctx.fillRect(0, 0, width, height);
-
-    // 2. White border inset
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 8;
-    roundedRectPath(ctx, 30, 30, width - 60, height - 60, 40);
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-
-    // 3. Heads
-    ctx.beginPath();
-    ctx.arc(260, 190, 44, 0, Math.PI * 2);
-    ctx.arc(460, 190, 44, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 4. Male Body (Left)
-    roundedRectPath(ctx, 175, 250, 170, 244, 46);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(175, 342);
-    ctx.lineTo(127, 506);
-    ctx.quadraticCurveTo(119, 536, 146, 546);
-    ctx.quadraticCurveTo(174, 555, 184, 523);
-    ctx.lineTo(223, 385);
-    ctx.lineTo(296, 385);
-    ctx.lineTo(336, 523);
-    ctx.quadraticCurveTo(346, 555, 374, 546);
-    ctx.quadraticCurveTo(401, 536, 393, 506);
-    ctx.lineTo(345, 342);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(222, 492, 42, 150);
-    ctx.fillRect(277, 492, 42, 150);
-
-    // 5. Female Body (Right)
-    roundedRectPath(ctx, 375, 250, 170, 380, 42);
-    ctx.fill();
-    ctx.fillRect(415, 468, 47, 174);
-    ctx.fillRect(484, 468, 47, 174);
-    roundedRectPath(ctx, 338, 314, 48, 156, 22);
-    roundedRectPath(ctx, 532, 314, 48, 156, 22);
-    ctx.fill();
-
-    // 6. Text: RESTROOM (using Univers font for consistency)
-    ctx.font = '800 74px "Univers", "Helvetica Neue", Helvetica, Arial, sans-serif';
-    ctx.fillText('RESTROOM', width * 0.5, 755);
-
-    // 7. Directional Arrow (pointing right)
-    ctx.beginPath();
-    ctx.moveTo(222, 820);
-    ctx.lineTo(435, 820);
-    ctx.lineTo(435, 782);
-    ctx.lineTo(524, 848);
-    ctx.lineTo(435, 914);
-    ctx.lineTo(435, 876);
-    ctx.lineTo(222, 876);
-    ctx.closePath();
-    ctx.fill();
-  });
-}
-
+const textureLoader = new THREE.TextureLoader();
 let restroomTexture = null;
 let restroomMaterials = null;
 
 function getRestroomMaterials() {
   if (!restroomMaterials) {
-    restroomTexture = drawRestroomTexture();
+    restroomTexture = textureLoader.load('img/restroom_sign.png');
+    restroomTexture.colorSpace = THREE.SRGBColorSpace;
 
     const sideMat = new THREE.MeshStandardMaterial({
       color: 0x0c5b8f,
@@ -332,6 +266,7 @@ function getRestroomMaterials() {
       map: restroomTexture,
       roughness: 0.15,
       metalness: 0.05,
+      transparent: true,
     });
 
     restroomMaterials = [sideMat, sideMat, sideMat, sideMat, frontMat, sideMat];
