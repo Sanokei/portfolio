@@ -3,15 +3,23 @@
 // then runs the animation loop.
 
 import * as THREE from 'three';
-import { initScene, positionCamera, resizeRenderer } from './scene.js?v=rough-wall-8';
-import { buildWall } from './wall.js?v=rough-wall-8';
-import { projects, categoryOrder } from './projects.js?v=rough-wall-8';
-import { initScroll, setBounds, setTargetY } from './scroll.js?v=rough-wall-8';
-import { buildCarousels } from './carousel.js?v=rough-wall-8';
-import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=rough-wall-8';
-import { buildEnvironment } from './environment.js?v=rough-wall-8';
-import { initInteractions } from './interactions.js?v=rough-wall-8';
-import { getLayoutMetrics } from './layout.js?v=rough-wall-8';
+import { initScene, positionCamera, resizeRenderer } from './scene.js?v=minimal-loader';
+import { buildWall, buildHeaderBackdrop } from './wall.js?v=minimal-loader';
+import { buildWallDecals } from './decals.js?v=wall-decals';
+import { projects, categoryOrder } from './projects.js?v=minimal-loader';
+import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
+import { buildCarousels } from './carousel.js?v=minimal-loader';
+import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=minimal-loader';
+import { buildEnvironment } from './environment.js?v=minimal-loader';
+import { initInteractions } from './interactions.js?v=minimal-loader';
+import { getLayoutMetrics } from './layout.js?v=minimal-loader';
+
+const INTRO_TIMING = {
+  loadingFadeMs: 750,
+  postLoadingDelayMs: 300,
+  letterboxMs: 1550,
+  promptDelayMs: 120,
+};
 
 function disposeObjectGeometries(root) {
   root.traverse((object) => {
@@ -41,6 +49,16 @@ async function main() {
   let scrollCtrl = null;
   let buildToken = 0;
 
+  // Loading progress bar helper.
+  const loadingBar = document.getElementById('loading-bar-fill');
+
+  function updateLoadingProgress(done, total) {
+    if (loadingBar) {
+      const pct = total > 0 ? (done / total) * 100 : 100;
+      loadingBar.style.width = `${pct.toFixed(1)}%`;
+    }
+  }
+
   async function rebuildScene(initial = false) {
     const token = ++buildToken;
     const nextRoot = new THREE.Group();
@@ -48,18 +66,23 @@ async function main() {
     nextRoot.visible = false;
     scene.add(nextRoot);
 
-    const { cavityData } = await buildWall(nextRoot, projects, categoryOrder);
+    const { cavityData } = await buildWall(nextRoot, projects, categoryOrder, updateLoadingProgress);
     if (token !== buildToken) {
       scene.remove(nextRoot);
       disposeObjectGeometries(nextRoot);
       return;
     }
 
-    const nextCarouselCtrl = buildCarousels(nextRoot, cavityData);
-    buildHeaderPlaque(nextRoot);
-    const plaqueObjects = buildProjectPlaques(nextRoot, cavityData);
+    buildWallDecals(nextRoot, cavityData);
+    const nextCarouselCtrl = buildCarousels(nextRoot, cavityData, camera, renderer);
     const nextEnvironmentCtrl = buildEnvironment(nextRoot, projects, categoryOrder);
     const metrics = getLayoutMetrics();
+
+    // Header backdrop — a solid plaster panel that fills the viewport
+    // behind the title plaque, sized independently of the project wall.
+    buildHeaderBackdrop(nextRoot, metrics);
+    buildHeaderPlaque(nextRoot);
+    const plaqueObjects = buildProjectPlaques(nextRoot, cavityData);
 
     interactionCtrl?.dispose();
     carouselCtrl.dispose();
@@ -78,6 +101,10 @@ async function main() {
     const minY = lastY - 2.5;
     const maxY = metrics.headerY;
     setBounds(minY, maxY);
+    setSnapPoints(
+      cavityData.map(cd => cd.worldY),
+      Math.min(maxY - 0.2, cavityData[0].worldY + metrics.visibleWallHeight * 0.5),
+    );
 
     const desiredY = initial ? metrics.headerY : camera.position.y;
     const cameraY = THREE.MathUtils.clamp(desiredY, minY, maxY);
@@ -87,7 +114,53 @@ async function main() {
   }
 
   await rebuildScene(true);
-  scrollCtrl = initScroll(camera);
+
+  const loadingEl = document.getElementById('loading-screen');
+  const letterboxBars = document.getElementById('letterbox-bars');
+  const scrollPrompt = document.getElementById('scroll-prompt');
+
+  // Hide scroll prompt on first user scroll
+  let promptDismissed = false;
+  function dismissScrollPrompt() {
+    if (promptDismissed || !scrollPrompt) return;
+    promptDismissed = true;
+    scrollPrompt.classList.remove('scroll-prompt-visible');
+    scrollPrompt.classList.add('scroll-prompt-hidden');
+    window.removeEventListener('wheel', dismissScrollPrompt);
+    window.removeEventListener(SCROLL_INPUT_EVENT, dismissScrollPrompt);
+    window.removeEventListener('touchmove', dismissScrollPrompt);
+  }
+
+  function enableScrollAndPrompt() {
+    if (!scrollCtrl) scrollCtrl = initScroll(camera, renderer.domElement);
+
+    if (scrollPrompt) {
+      scrollPrompt.classList.remove('scroll-prompt-hidden');
+      scrollPrompt.classList.add('scroll-prompt-visible');
+    }
+
+    window.addEventListener('wheel', dismissScrollPrompt, { passive: true });
+    window.addEventListener(SCROLL_INPUT_EVENT, dismissScrollPrompt);
+    window.addEventListener('touchmove', dismissScrollPrompt, { passive: true });
+  }
+
+  function revealMuseum() {
+    const loadingFadeMs = loadingEl ? INTRO_TIMING.loadingFadeMs : 0;
+    const postLoadingDelayMs = loadingEl ? INTRO_TIMING.postLoadingDelayMs : 0;
+    const letterboxMs = letterboxBars ? INTRO_TIMING.letterboxMs : 0;
+    const letterboxStartMs = loadingFadeMs + postLoadingDelayMs;
+    const scrollReadyMs = letterboxStartMs + letterboxMs + INTRO_TIMING.promptDelayMs;
+
+    if (loadingEl) loadingEl.classList.add('hidden');
+    if (letterboxBars) {
+      window.setTimeout(() => {
+        letterboxBars.classList.add('visible');
+      }, letterboxStartMs);
+    }
+    window.setTimeout(enableScrollAndPrompt, scrollReadyMs);
+  }
+
+  revealMuseum();
 
   let lastTime = performance.now();
   function animate(now) {
@@ -111,9 +184,6 @@ async function main() {
       rebuildScene(false);
     }, 160);
   });
-
-  const loadingEl = document.getElementById('loading-screen');
-  if (loadingEl) loadingEl.classList.add('hidden');
 
   console.log('Responsive wall scene built');
 

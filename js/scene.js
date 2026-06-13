@@ -1,6 +1,7 @@
 // scene.js - Three.js renderer, camera, and gallery lighting.
 
 import * as THREE from 'three';
+import { WALL_Y_CENTER, WALL_HEIGHT } from './layout.js';
 
 function getCameraZ() {
   const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
@@ -38,7 +39,9 @@ export function initScene() {
     0.35,
     80,
   );
-  positionCamera(camera, 3.55);
+  // Initial y is a rough guess; rebuildScene(true) repositions the camera
+  // to the wall-anchored headerY before any frames are rendered.
+  positionCamera(camera, WALL_Y_CENTER + WALL_HEIGHT / 2 - 2);
 
   const ambient = new THREE.AmbientLight(0xfff8ef, 0.68);
   scene.add(ambient);

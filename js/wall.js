@@ -230,14 +230,27 @@ function getModuleBounds(cavityData, index) {
   const current = cavityData[index];
   const previous = cavityData[index - 1];
   const next = cavityData[index + 1];
+  const defaultTop = previous
+    ? (previous.worldY + current.worldY) / 2
+    : current.worldY + current.spacing / 2;
+  const defaultBottom = next
+    ? (current.worldY + next.worldY) / 2
+    : current.worldY - current.spacing / 2;
+
+  let top = defaultTop;
+  let bottom = defaultBottom;
+
+  if ((!previous || previous.category !== current.category) && current.sectionWallTopY) {
+    top = current.sectionWallTopY;
+  }
+
+  if (next && next.category !== current.category && next.sectionWallTopY) {
+    bottom = next.sectionWallTopY;
+  }
 
   return {
-    top: previous
-      ? (previous.worldY + current.worldY) / 2
-      : current.worldY + current.spacing / 2,
-    bottom: next
-      ? (current.worldY + next.worldY) / 2
-      : current.worldY - current.spacing / 2,
+    top,
+    bottom,
   };
 }
 
@@ -267,15 +280,7 @@ function addEndCaps(wallGroup, cavityData) {
   );
 }
 
-export async function buildWall(scene, projects, categoryOrder) {
-  const loadingBar = document.getElementById('loading-bar');
-  const loadingText = document.getElementById('loading-text');
-  const setProgress = (pct, msg) => {
-    if (loadingBar) loadingBar.style.width = `${Math.min(pct, 100)}%`;
-    if (loadingText) loadingText.textContent = msg;
-  };
-
-  setProgress(8, 'Building the plaster wall...');
+export async function buildWall(scene, projects, categoryOrder, onProgress) {
   const { modules: cavityData } = buildModuleLayout(projects, categoryOrder);
   const wallGroup = new THREE.Group();
   scene.add(wallGroup);
@@ -285,11 +290,35 @@ export async function buildWall(scene, projects, categoryOrder) {
   for (let i = 0; i < cavityData.length; i++) {
     const cd = cavityData[i];
     const bounds = getModuleBounds(cavityData, i);
-    setProgress(12 + Math.round((i / cavityData.length) * 84), `Placing opening: ${cd.project.name}...`);
     wallGroup.add(createOpeningWall(cd, bounds.top, bounds.bottom));
+    if (onProgress) onProgress(i + 1, cavityData.length);
     if (i % 4 === 3) await new Promise(resolve => setTimeout(resolve, 0));
   }
 
-  setProgress(100, 'Wall loaded top to bottom.');
   return { wallGroup, cavityData };
+}
+
+// ---------------------------------------------------------------------------
+// Header backdrop — a standalone solid panel that fills the viewport behind
+// the title plaque.  Separated from the main project wall so it can be sized
+// independently (wider + taller than any viewport at the header position).
+// ---------------------------------------------------------------------------
+export function buildHeaderBackdrop(scene, metrics) {
+  const { headerY, wallZ, backdropHeight } = metrics;
+  // Wider than the project wall to guarantee horizontal fill on every
+  // aspect ratio; height tracks the actual visible slice at the wall plane.
+  const panelW = 22;
+  const panelH = backdropHeight;
+
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(panelW, panelH, 0.18),
+    plasterMaterial,
+  );
+  // Slightly in front of the main wall face (plaque is at wallZ + 0.09).
+  // In-front placement avoids z-fighting with the spherical rock cavities
+  // while keeping the plaque legible on top.
+  panel.position.set(0, headerY, wallZ + 0.025);
+  panel.name = 'header-backdrop';
+  scene.add(panel);
+  return panel;
 }
