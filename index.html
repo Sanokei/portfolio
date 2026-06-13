@@ -6,20 +6,37 @@
   <title>The Portfolio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Playfair+Display+SC:wght@900&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./main.css">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Great+Vibes&family=Pinyon+Script&family=Playfair+Display+SC:wght@900&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./main.css?v=minimal-loader">
 </head>
 <body>
-  <!-- Loading overlay -->
-  <div id="loading-screen">
-    <div id="loading-text">Entering the museum...</div>
-    <div id="loading-bar-container">
-      <div id="loading-bar"></div>
+  <!-- Loading intro -->
+  <div id="loading-screen" role="status" aria-live="polite" aria-label="Loading the museum">
+    <div class="loading-panel">
+      <div class="loading-title">Loading...</div>
+      <div class="loading-bar" aria-hidden="true">
+        <div id="loading-bar-fill"></div>
+      </div>
     </div>
+  </div>
+
+  <!-- Cinematic bars arrive after loading fades -->
+  <div id="letterbox-bars" aria-hidden="true">
+    <div class="letterbox-bar letterbox-bar-top"></div>
+    <div class="letterbox-bar letterbox-bar-bottom"></div>
+  </div>
+
+  <!-- Scroll prompt — appears after wall loads -->
+  <div id="scroll-prompt" class="scroll-prompt-hidden">
+    <span class="scroll-arrow">↓</span>
+    <span class="scroll-text">scroll to explore</span>
   </div>
 
   <!-- Three.js canvas fills viewport -->
   <canvas id="canvas"></canvas>
+
+  <!-- YouTube embeds rendered behind CRT screens -->
+  <div id="youtube-layer"></div>
 
   <!-- Import map: Three.js from CDN -->
   <script type="importmap">
@@ -31,6 +48,6 @@
   }
   </script>
 
-  <script type="module" src="./js/main.js?v=rough-wall-8"></script>
+  <script type="module" src="./js/main.js?v=minimal-loader"></script>
 </body>
 </html>

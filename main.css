@@ -1,5 +1,9 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:root {
+  --letterbox-bar-height: clamp(86px, 12vh, 124px);
+}
+
 html, body {
   width: 100%;
   height: 100%;
@@ -17,43 +21,147 @@ html, body {
 
 #loading-screen {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background:
-    linear-gradient(90deg, rgba(60, 50, 40, 0.04) 1px, transparent 1px) 0 0 / 96px 96px,
-    linear-gradient(180deg, #f7f3eb 0%, #e4dbcf 100%);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #0d2418;
+  box-shadow: inset 0 0 0 1px rgba(246, 232, 197, 0.24);
   z-index: 1000;
-  transition: opacity 0.6s ease-out;
+  opacity: 1;
+  transition: opacity 0.75s ease;
+}
+
+#loading-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 12, 8, 0.72), rgba(13, 36, 24, 0) 38%, rgba(13, 36, 24, 0) 68%, rgba(246, 232, 197, 0.06));
+  pointer-events: none;
 }
 
 #loading-screen.hidden {
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.75s ease, visibility 0s linear 0.75s;
 }
 
-#loading-text {
-  color: #25211d;
-  font-family: 'EB Garamond', serif;
-  font-size: 1.8rem;
-  font-style: italic;
-  margin-bottom: 1.5rem;
+.loading-panel {
+  position: relative;
+  width: min(360px, calc(100vw - 64px));
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  z-index: 1;
 }
 
-#loading-bar-container {
-  width: 240px;
+.loading-title {
+  font-family: 'Pinyon Script', 'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive;
+  font-size: clamp(2.15rem, 7vw, 4rem);
+  font-weight: 400;
+  line-height: 1;
+  color: #f6e8c5;
+  text-shadow: 0 10px 28px rgba(246, 232, 197, 0.08);
+}
+
+.loading-bar {
+  width: 100%;
   height: 5px;
-  background: #d4c8b8;
-  border: 1px solid #9f907d;
   overflow: hidden;
+  background: rgba(246, 232, 197, 0.16);
 }
 
-#loading-bar {
+#loading-bar-fill {
   width: 0%;
   height: 100%;
-  background: #222;
-  transition: width 0.3s ease;
+  background: #f6e8c5;
+  transition: width 0.18s ease;
+}
+
+#letterbox-bars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 850;
+}
+
+.letterbox-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--letterbox-bar-height);
+  background: #fff;
+  box-shadow: 0 0 26px rgba(0,0,0,0.12);
+  transition: transform 1.55s cubic-bezier(0.55, 0, 0.1, 1);
+  will-change: transform;
+}
+
+.letterbox-bar-top {
+  top: 0;
+  transform: translateY(-100%);
+}
+
+.letterbox-bar-bottom {
+  bottom: 0;
+  transform: translateY(100%);
+}
+
+#letterbox-bars.visible .letterbox-bar {
+  transform: translateY(0);
+}
+
+/* Scroll prompt appears after the bars land */
+#scroll-prompt {
+  position: fixed;
+  bottom: calc((var(--letterbox-bar-height) - 58px) / 2);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  z-index: 900;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+
+.scroll-prompt-hidden {
+  opacity: 0;
+}
+
+.scroll-prompt-visible {
+  opacity: 0.94;
+}
+
+.scroll-arrow {
+  font-size: 1.6rem;
+  color: #111;
+  animation: scroll-bounce 1.6s ease-in-out infinite;
+}
+
+.scroll-text {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: #111;
+}
+
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(10px); }
+}
+
+#youtube-layer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+#youtube-layer iframe {
+  position: absolute;
+  overflow: hidden;
+  opacity: 0.95;
 }

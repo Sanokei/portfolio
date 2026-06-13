@@ -206,9 +206,17 @@ function renderProjectTexture(project) {
 export function buildHeaderPlaque(scene) {
   const { headerW, headerH, headerY, wallZ } = getLayoutMetrics();
   const texture = renderHeaderTexture();
+
+  // Front face uses MeshBasicMaterial so the title canvas renders
+  // at full brightness — no scene-lighting dimming. Sides/back stay
+  // Standard so the plaque still has physical depth cues.
+  const front = new THREE.MeshBasicMaterial({ map: texture });
+  const side = new THREE.MeshStandardMaterial({ color: 0xd8d0c2, roughness: 0.78, metalness: 0.04 });
+  const back = new THREE.MeshStandardMaterial({ color: 0x1d1a16, roughness: 0.82, metalness: 0.02 });
+
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(headerW, headerH, 0.08),
-    makePlaqueMaterials(texture),
+    [side, side, side, side, front, back],
   );
   mesh.position.set(0, headerY, wallZ + 0.09);
   scene.add(mesh);
