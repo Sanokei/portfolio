@@ -21,6 +21,8 @@ function makeTransparentTexture(width, height, draw) {
   draw(ctx, width, height);
 
   const texture = new THREE.CanvasTexture(canvas);
+
+
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -48,108 +50,164 @@ function setInk(ctx) {
   ctx.lineJoin = 'round';
 }
 
-function drawSlash(ctx, x, y, size) {
-  ctx.save();
-  ctx.strokeStyle = 'rgba(24, 27, 24, 0.9)';
-  ctx.lineWidth = Math.max(5, size * 0.12);
+function roundedRectPath(ctx, x, y, width, height, r) {
   ctx.beginPath();
-  ctx.moveTo(x - size * 0.42, y + size * 0.42);
-  ctx.lineTo(x + size * 0.42, y - size * 0.42);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawProhibitionSign(ctx, x, y, size, drawIcon) {
+  ctx.save();
+  
+  // 1. Draw the inner icon in dark charcoal
+  ctx.strokeStyle = 'rgba(24, 27, 24, 0.9)';
+  ctx.fillStyle = 'rgba(24, 27, 24, 0.9)';
+  ctx.lineWidth = size * 0.055;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  drawIcon(ctx, x, y, size * 0.7);
+  
+  // 2. Draw the red prohibition ring and slash
+  ctx.strokeStyle = '#e53935'; // professional warning red
+  ctx.lineWidth = size * 0.09;
+  ctx.lineCap = 'square';
+  
+  // Circle
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.44, 0, Math.PI * 2);
   ctx.stroke();
+  
+  // Diagonal slash (ISO 7010 style: top-left to bottom-right)
+  const angle = 45 * Math.PI / 180;
+  const dx = Math.cos(angle) * size * 0.44;
+  const dy = Math.sin(angle) * size * 0.44;
+  ctx.beginPath();
+  ctx.moveTo(x - dx, y - dy);
+  ctx.lineTo(x + dx, y + dy);
+  ctx.stroke();
+  
   ctx.restore();
 }
 
 function drawCameraIcon(ctx, x, y, size) {
-  ctx.save();
-  setInk(ctx);
-  ctx.lineWidth = size * 0.08;
-  ctx.strokeRect(x - size * 0.32, y - size * 0.12, size * 0.56, size * 0.32);
-  ctx.strokeRect(x - size * 0.18, y - size * 0.25, size * 0.2, size * 0.13);
   ctx.beginPath();
-  ctx.arc(x - size * 0.05, y + size * 0.04, size * 0.1, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + size * 0.24, y - size * 0.25);
-  ctx.lineTo(x + size * 0.42, y - size * 0.38);
-  ctx.lineTo(x + size * 0.36, y - size * 0.18);
-  ctx.stroke();
-  drawSlash(ctx, x, y, size);
-  ctx.restore();
-}
-
-function drawCupIcon(ctx, x, y, size) {
-  ctx.save();
-  setInk(ctx);
-  ctx.lineWidth = size * 0.08;
-  ctx.beginPath();
-  ctx.moveTo(x - size * 0.2, y - size * 0.3);
-  ctx.lineTo(x + size * 0.16, y - size * 0.3);
-  ctx.lineTo(x + size * 0.08, y + size * 0.32);
-  ctx.lineTo(x - size * 0.12, y + size * 0.32);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + size * 0.18, y - size * 0.08);
-  ctx.quadraticCurveTo(x + size * 0.43, y - size * 0.02, x + size * 0.18, y + size * 0.16);
-  ctx.stroke();
-  drawSlash(ctx, x, y, size);
-  ctx.restore();
-}
-
-function drawSleepIcon(ctx, x, y, size) {
-  ctx.save();
-  setInk(ctx);
-  ctx.lineWidth = size * 0.08;
-  ctx.beginPath();
-  ctx.moveTo(x - size * 0.36, y + size * 0.18);
-  ctx.lineTo(x + size * 0.2, y + size * 0.18);
-  ctx.moveTo(x - size * 0.33, y - size * 0.08);
-  ctx.lineTo(x - size * 0.05, y - size * 0.08);
-  ctx.lineTo(x - size * 0.33, y + size * 0.12);
-  ctx.lineTo(x - size * 0.05, y + size * 0.12);
-  ctx.moveTo(x + size * 0.06, y - size * 0.29);
-  ctx.lineTo(x + size * 0.36, y - size * 0.29);
-  ctx.lineTo(x + size * 0.06, y - size * 0.05);
-  ctx.lineTo(x + size * 0.36, y - size * 0.05);
-  ctx.stroke();
-  drawSlash(ctx, x, y, size);
-  ctx.restore();
-}
-
-function drawPerson(ctx, x, y, size, dress) {
-  ctx.save();
-  setInk(ctx);
-  ctx.beginPath();
-  ctx.arc(x, y - size * 0.36, size * 0.09, 0, Math.PI * 2);
+  const w = size * 0.54;
+  const h = size * 0.34;
+  
+  // Top prism/flash mount
+  ctx.fillStyle = 'rgba(24, 27, 24, 0.9)';
+  ctx.fillRect(x - size * 0.1, y - h / 2 - size * 0.07, size * 0.2, size * 0.08);
+  
+  // Main camera body
+  roundedRectPath(ctx, x - w / 2, y - h / 2, w, h, size * 0.06);
   ctx.fill();
+  
+  // Lens ring
+  ctx.strokeStyle = '#f5f5f5';
+  ctx.lineWidth = size * 0.055;
+  ctx.beginPath();
+  ctx.arc(x, y + size * 0.01, size * 0.095, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Flash bulb indicator
+  ctx.fillStyle = '#f5f5f5';
+  ctx.beginPath();
+  ctx.arc(x + w * 0.3, y - h * 0.22, size * 0.035, 0, Math.PI * 2);
+  ctx.fill();
+}
 
-  ctx.lineWidth = size * 0.08;
-  if (dress) {
-    ctx.beginPath();
-    ctx.moveTo(x, y - size * 0.22);
-    ctx.lineTo(x - size * 0.18, y + size * 0.18);
-    ctx.lineTo(x + size * 0.18, y + size * 0.18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(x - size * 0.08, y + size * 0.18);
-    ctx.lineTo(x - size * 0.08, y + size * 0.42);
-    ctx.moveTo(x + size * 0.08, y + size * 0.18);
-    ctx.lineTo(x + size * 0.08, y + size * 0.42);
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(x, y - size * 0.22);
-    ctx.lineTo(x, y + size * 0.2);
-    ctx.moveTo(x - size * 0.17, y - size * 0.06);
-    ctx.lineTo(x + size * 0.17, y - size * 0.06);
-    ctx.moveTo(x, y + size * 0.2);
-    ctx.lineTo(x - size * 0.14, y + size * 0.42);
-    ctx.moveTo(x, y + size * 0.2);
-    ctx.lineTo(x + size * 0.14, y + size * 0.42);
-    ctx.stroke();
-  }
+function drawFoodDrinkIcon(ctx, x, y, size) {
+  ctx.fillStyle = 'rgba(24, 27, 24, 0.9)';
+  
+  // Soda Cup
+  ctx.save();
+  ctx.translate(x + size * 0.13, y + size * 0.04);
+  // Cup body
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.11, -size * 0.15);
+  ctx.lineTo(size * 0.11, -size * 0.15);
+  ctx.lineTo(size * 0.07, size * 0.22);
+  ctx.lineTo(-size * 0.07, size * 0.22);
+  ctx.closePath();
+  ctx.fill();
+  // Lid
+  ctx.fillRect(-size * 0.13, -size * 0.18, size * 0.26, size * 0.04);
+  // Straw
+  ctx.strokeStyle = 'rgba(24, 27, 24, 0.9)';
+  ctx.lineWidth = size * 0.04;
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.18);
+  ctx.lineTo(0, -size * 0.25);
+  ctx.lineTo(size * 0.07, -size * 0.31);
+  ctx.stroke();
   ctx.restore();
+  
+  // Hamburger
+  ctx.save();
+  ctx.translate(x - size * 0.15, y + size * 0.08);
+  // Top bun
+  ctx.beginPath();
+  ctx.arc(0, -size * 0.02, size * 0.14, Math.PI, 0);
+  ctx.fill();
+  // Patty
+  ctx.fillRect(-size * 0.14, 0, size * 0.28, size * 0.04);
+  // Bottom bun
+  roundedRectPath(ctx, -size * 0.14, size * 0.06, size * 0.28, size * 0.05, size * 0.025);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawNoSittingIcon(ctx, x, y, size) {
+  ctx.strokeStyle = 'rgba(24, 27, 24, 0.9)';
+  ctx.fillStyle = 'rgba(24, 27, 24, 0.9)';
+  ctx.lineWidth = size * 0.06;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  // Draw Chair
+  ctx.beginPath();
+  // Backrest
+  ctx.moveTo(x - size * 0.11, y - size * 0.24);
+  ctx.lineTo(x - size * 0.11, y + size * 0.08);
+  // Seat
+  ctx.lineTo(x + size * 0.17, y + size * 0.08);
+  ctx.stroke();
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(x - size * 0.09, y + size * 0.08);
+  ctx.lineTo(x - size * 0.09, y + size * 0.28);
+  ctx.moveTo(x + size * 0.13, y + size * 0.08);
+  ctx.lineTo(x + size * 0.13, y + size * 0.28);
+  ctx.stroke();
+  
+  // Draw Person Sitting
+  // Head
+  ctx.beginPath();
+  ctx.arc(x + size * 0.03, y - size * 0.27, size * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Torso, thigh, calves
+  ctx.beginPath();
+  ctx.moveTo(x + size * 0.02, y - size * 0.19);
+  ctx.lineTo(x + size * 0.0, y + size * 0.05);
+  ctx.lineTo(x + size * 0.21, y + size * 0.05);
+  ctx.lineTo(x + size * 0.21, y + size * 0.24);
+  ctx.stroke();
+  
+  // Arm
+  ctx.beginPath();
+  ctx.moveTo(x + size * 0.01, y - size * 0.11);
+  ctx.lineTo(x + size * 0.11, y - size * 0.04);
+  ctx.lineTo(x + size * 0.15, y + size * 0.05);
+  ctx.stroke();
 }
 
 function drawArrow(ctx, x, y, width, right) {
@@ -170,110 +228,49 @@ function drawArrow(ctx, x, y, width, right) {
   ctx.restore();
 }
 
-function roundedRect(ctx, x, y, width, height, radius) {
-  const r = Math.min(radius, width * 0.5, height * 0.5);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
 function drawRulesTexture() {
   return makeTransparentTexture(780, 520, (ctx, width) => {
     setInk(ctx);
-    drawCameraIcon(ctx, 125, 86, 90);
-    drawCupIcon(ctx, 260, 86, 90);
-    drawSleepIcon(ctx, 395, 86, 90);
+    drawProhibitionSign(ctx, 125, 86, 90, drawCameraIcon);
+    drawProhibitionSign(ctx, 260, 86, 90, drawFoodDrinkIcon);
+    drawProhibitionSign(ctx, 395, 86, 90, drawNoSittingIcon);
 
-    ctx.font = '39px "Comic Sans MS", "Trebuchet MS", sans-serif';
+    ctx.font = '39px "Univers", "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText('No flash photography', 70, 162);
     ctx.fillText('No eating or drinking', 70, 213);
     ctx.fillText('No sitting or sleeping', 70, 264);
 
-    ctx.font = '39px "Comic Sans MS", "Trebuchet MS", sans-serif';
+    ctx.font = '39px "Univers", "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.fillText('Please do not touch', 88, 386);
     ctx.fillText('the artworks', 88, 434);
   });
 }
 
-function drawRestroomTexture() {
-  return makeTransparentTexture(720, 960, (ctx, width, height) => {
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 8;
-    ctx.shadowOffsetY = 8;
-    ctx.fillStyle = '#0c5b8f';
-    roundedRect(ctx, 28, 26, width - 64, height - 66, 48);
-    ctx.fill();
-    ctx.restore();
+const textureLoader = new THREE.TextureLoader();
+let restroomTexture = null;
+let restroomMaterials = null;
 
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 2;
-    roundedRect(ctx, 28, 26, width - 64, height - 66, 48);
-    ctx.stroke();
-    ctx.restore();
+function getRestroomMaterials() {
+  if (!restroomMaterials) {
+    restroomTexture = textureLoader.load('img/restroom_sign.png');
+    restroomTexture.colorSpace = THREE.SRGBColorSpace;
 
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
+    const sideMat = new THREE.MeshStandardMaterial({
+      color: 0x0c5b8f,
+      roughness: 0.15,
+      metalness: 0.05,
+    });
+    const frontMat = new THREE.MeshStandardMaterial({
+      map: restroomTexture,
+      roughness: 0.15,
+      metalness: 0.05,
+    });
 
-    ctx.beginPath();
-    ctx.arc(257, 190, 44, 0, Math.PI * 2);
-    ctx.arc(455, 190, 44, 0, Math.PI * 2);
-    ctx.fill();
-
-    roundedRect(ctx, 172, 250, 170, 244, 46);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(172, 342);
-    ctx.lineTo(124, 506);
-    ctx.quadraticCurveTo(116, 536, 143, 546);
-    ctx.quadraticCurveTo(171, 555, 181, 523);
-    ctx.lineTo(220, 385);
-    ctx.lineTo(293, 385);
-    ctx.lineTo(333, 523);
-    ctx.quadraticCurveTo(343, 555, 371, 546);
-    ctx.quadraticCurveTo(398, 536, 390, 506);
-    ctx.lineTo(342, 342);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(219, 492, 42, 150);
-    ctx.fillRect(274, 492, 42, 150);
-
-    roundedRect(ctx, 375, 250, 168, 380, 42);
-    ctx.fill();
-    ctx.fillRect(415, 468, 47, 174);
-    ctx.fillRect(484, 468, 47, 174);
-    roundedRect(ctx, 338, 314, 48, 156, 22);
-    roundedRect(ctx, 532, 314, 48, 156, 22);
-    ctx.fill();
-
-    ctx.font = '74px Arial, Helvetica, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('RESTROOM', width * 0.5, 755);
-
-    ctx.beginPath();
-    ctx.moveTo(218, 820);
-    ctx.lineTo(431, 820);
-    ctx.lineTo(431, 782);
-    ctx.lineTo(520, 848);
-    ctx.lineTo(431, 914);
-    ctx.lineTo(431, 876);
-    ctx.lineTo(218, 876);
-    ctx.closePath();
-    ctx.fill();
-  });
+    restroomMaterials = [sideMat, sideMat, sideMat, sideMat, frontMat, sideMat];
+  }
+  return restroomMaterials;
 }
 
 function drawGiftShopTexture() {
@@ -353,9 +350,11 @@ function drawExitEventuallyTexture() {
 }
 
 function getMaterial(kind) {
+  if (kind === 'restrooms') {
+    return getRestroomMaterials();
+  }
   const factories = {
     rules: drawRulesTexture,
-    restrooms: drawRestroomTexture,
     giftShop: drawGiftShopTexture,
     doNotTap: drawDoNotTapTexture,
     youAreHere: drawYouAreHereTexture,
@@ -367,7 +366,7 @@ function getMaterial(kind) {
 function getTemplateSize(kind) {
   const sizes = {
     rules: { width: 1.82, height: 1.22 },
-    restrooms: { width: 0.92, height: 1.22 },
+    restrooms: { width: 1.0, height: 1.0 },
     giftShop: { width: 1.48, height: 0.54 },
     doNotTap: { width: 1.36, height: 0.54 },
     youAreHere: { width: 1.18, height: 0.54 },
@@ -424,17 +423,31 @@ export function buildWallDecals(scene, cavityData) {
     const width = template.width * scale;
     const height = template.height * scale;
 
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, height),
-      getMaterial(placement.kind),
-    );
-    mesh.position.set(
-      getDecalX(placement.side, width, metrics),
-      gap.centerY,
-      gap.current.wallZ + DECAL_Z_OFFSET,
-    );
+    let mesh;
+    if (placement.kind === 'restrooms') {
+      const depth = 0.06 * scale;
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        getMaterial(placement.kind),
+      );
+      mesh.position.set(
+        getDecalX(placement.side, width, metrics),
+        gap.centerY,
+        gap.current.wallZ + depth / 2 + 0.015,
+      );
+    } else {
+      mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        getMaterial(placement.kind),
+      );
+      mesh.position.set(
+        getDecalX(placement.side, width, metrics),
+        gap.centerY,
+        gap.current.wallZ + DECAL_Z_OFFSET,
+      );
+      mesh.renderOrder = 4;
+    }
     mesh.rotation.z = placement.rotate;
-    mesh.renderOrder = 4;
     group.add(mesh);
   }
 
