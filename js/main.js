@@ -97,8 +97,8 @@ async function main() {
     interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons);
     root.visible = true;
 
-    const lastY = cavityData[cavityData.length - 1].worldY;
-    const minY = lastY - 2.5;
+    const floorY = -114;
+    const minY = floorY + metrics.visibleWallHeight / 2;
     const maxY = metrics.headerY;
     setBounds(minY, maxY);
     setSnapPoints(

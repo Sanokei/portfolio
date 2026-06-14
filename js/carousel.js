@@ -138,6 +138,15 @@ function hideYouTube() {
 function createTextureForAsset(asset, project) {
   if (!asset) return { texture: createStaticTexture(), video: null, loaded: true };
 
+  if (asset.type === 'youtube') {
+    return {
+      texture: createStaticTexture(),
+      video: null,
+      youtubeId: asset.src,
+      loaded: true,
+    };
+  }
+
   if (asset.type === 'video') {
     const video = document.createElement('video');
     video.src = asset.src;
@@ -471,8 +480,18 @@ export function buildCarousels(scene, cavityData, camera, renderer) {
       const uniforms = crt.material.uniforms;
       uniforms.uTime.value += dt;
 
+      const activeItem = crt.media[crt.state.active];
+      const hasYoutube = activeItem && activeItem.youtubeId;
+
+      if (hasYoutube && activeYouTubeCrt !== crt) {
+        pauseVideos(crt);
+        crt.state.wasVisible = false;
+        crt.state.retroMode = false;
+        showYouTubeForCrt(crt, { videoId: activeItem.youtubeId });
+      }
+
       // ── Retro / YouTube mode ──────────────────────────────────
-      if (crt.state.retroMode) {
+      if (crt.state.retroMode || hasYoutube) {
         pauseVideos(crt);
         crt.state.wasVisible = false;
 

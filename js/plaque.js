@@ -8,7 +8,54 @@ const ICON_SOURCES = {
   itchio: 'img/itchio.jpg',
   itch: 'img/itchio.jpg',
   web: 'img/web.png',
+  blog: 'img/blog.png',
 };
+
+function drawYoutubeIcon(ctx, x, y) {
+  ctx.save();
+  ctx.fillStyle = '#e52d27';
+  ctx.beginPath();
+  const r = 4;
+  const w = 20;
+  const h = 14;
+  const rx = x;
+  const ry = y + 3;
+  if (ctx.roundRect) {
+    ctx.roundRect(rx, ry, w, h, r);
+  } else {
+    ctx.rect(rx, ry, w, h);
+  }
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(rx + 8, ry + 4);
+  ctx.lineTo(rx + 8, ry + 10);
+  ctx.lineTo(rx + 13, ry + 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawArtAllergyIcon(ctx, x, y) {
+  ctx.save();
+  ctx.fillStyle = '#111111';
+  ctx.beginPath();
+  ctx.arc(x + 10, y + 10, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('A', x + 9, y + 10);
+
+  ctx.fillStyle = '#e03a3e';
+  ctx.beginPath();
+  ctx.arc(x + 14, y + 6, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 
 const iconCache = {};
 
@@ -175,13 +222,18 @@ function renderProjectTexture(project) {
       ctx.fillRect(linkX, linkY - 26, labelW, 32);
       ctx.fillStyle = '#fffaf1';
       ctx.fillRect(linkX + 7, linkY - 22, 24, 24);
-      if (icon.loaded) {
+      if (link.icon === 'youtube' || link.icon === 'yt') {
+        drawYoutubeIcon(ctx, linkX + 9, linkY - 20);
+      } else if (link.icon === 'artallergy') {
+        drawArtAllergyIcon(ctx, linkX + 9, linkY - 20);
+      } else if (icon.loaded) {
         ctx.drawImage(icon.image, linkX + 9, linkY - 20, 20, 20);
       } else {
         ctx.fillStyle = '#151515';
         ctx.fillText('>', linkX + 15, linkY - 4);
         ctx.fillStyle = '#fffaf1';
       }
+      ctx.fillStyle = '#fffaf1';
       ctx.fillText(label, linkX + 40, linkY - 4);
 
       linkZones.push({

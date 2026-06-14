@@ -274,14 +274,29 @@ export function buildModuleLayout(projects, categoryOrder) {
       height: sectionPlaqueH,
     });
 
-    cursorY -= categoryGap;
+    // Ensure the next section's wall top and light bar are safely below
+    // the previous section's lowest visual element (hole bottom or plaque bottom).
+    const last_worldY = cursorY + spacing;
+    const last_stackedPlaqueDrop = holeH * 0.74 + plaqueH * 0.54;
+    const last_plaqueY = last_worldY - last_stackedPlaqueDrop * (1 - moduleHorizontalProgress);
+    const lastBottom = Math.min(last_worldY - holeH / 2, last_plaqueY - plaqueH / 2);
+
+    const distToWallTop = sectionLabelOffset + sectionPlaqueH / 2 + sectionHeadingTopPadding;
+    const clearanceBuffer = lerp(0.35, 0.085, moduleHorizontalProgress) * objectScale;
+    const constrainedNextStart = lastBottom - clearanceBuffer - distToWallTop;
+    const normalNextStart = cursorY - categoryGap;
+
+    cursorY = Math.min(normalNextStart, constrainedNextStart);
   }
+
+  const floorY = -114;
+  const minY = floorY + metrics.visibleWallHeight / 2;
 
   return {
     modules,
     sections,
     metrics,
     maxY: metrics.headerY,
-    minY: Math.max(WALL_Y_CENTER - WALL_HEIGHT / 2 + 3, cursorY + spacing - 1.5),
+    minY: minY,
   };
 }

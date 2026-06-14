@@ -275,7 +275,7 @@ export const projects = [
       'prints, and creator-led projects.',
     tags: ['Web Development', 'Design', 'Creative Direction'],
     links: [
-      { label: 'Website', url: 'https://artallergy.com/', icon: 'web' },
+      { label: 'Website', url: 'https://artallergy.com/', icon: 'artallergy' },
     ],
     assets: [],
   },
@@ -353,10 +353,10 @@ export const projects = [
       'understanding what\'s underneath instead. Developed a whole website for the video.',
     tags: ['Writing', 'Editing'],
     links: [
-      { label: 'YouTube', url: 'https://www.youtube.com/watch?v=WK5pHoAeL6Y', icon: 'web' },
+      { label: 'YouTube', url: 'https://www.youtube.com/watch?v=WK5pHoAeL6Y', icon: 'youtube' },
     ],
     assets: [
-      { type: 'image', src: 'img/thumbnail.jpg' },
+      { type: 'youtube', src: 'WK5pHoAeL6Y' },
     ],
   },
 

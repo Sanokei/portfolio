@@ -656,12 +656,108 @@ function addPlaquePerimeterLight(scene, module) {
   return { light: light, y: module.plaqueY, range: 4.5 * scale };
 }
 
+function generateMarbleTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Base off-white color
+  ctx.fillStyle = '#f5f3ee';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtly blended clouds
+  for (let i = 0; i < 12; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const r = 80 + Math.random() * 120;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(218, 212, 202, 0.18)');
+    g.addColorStop(1, 'rgba(218, 212, 202, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Organic grey vein strokes
+  function drawVein(x, y, len, angle, alpha) {
+    ctx.strokeStyle = `rgba(110, 105, 98, ${alpha})`;
+    ctx.lineWidth = 0.6 + Math.random() * 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    let cx = x, cy = y;
+    const steps = 30;
+    const stepL = len / steps;
+    for (let s = 0; s < steps; s++) {
+      angle += (Math.random() - 0.5) * 0.45;
+      cx += Math.cos(angle) * stepL;
+      cy += Math.sin(angle) * stepL;
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  for (let i = 0; i < 6; i++) {
+    drawVein(Math.random() * 512, Math.random() * 512, 120 + Math.random() * 180, Math.random() * Math.PI * 2, 0.12 + Math.random() * 0.12);
+  }
+
+  // Grout lines for 2x2 grid
+  ctx.strokeStyle = '#d5d1c4';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(0, 0, 512, 512);
+  ctx.beginPath();
+  ctx.moveTo(256, 0); ctx.lineTo(256, 512);
+  ctx.moveTo(0, 256); ctx.lineTo(512, 256);
+  ctx.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(6, 6);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+export function buildFloorAndBaseboard(scene, metrics) {
+  const floorY = -114;
+  const wallZ = metrics.wallZ;
+
+  // Marble tile floor
+  const floorGeo = new THREE.PlaneGeometry(32, 16);
+  const floorMat = new THREE.MeshStandardMaterial({
+    map: generateMarbleTexture(),
+    roughness: 0.22,
+    metalness: 0.02,
+  });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, floorY, wallZ - 2);
+  scene.add(floor);
+
+  // Baseboard trim positioned just above the floor (e.g. y = -114 + 0.175) at the wall depth
+  const trimMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.82,
+    metalness: 0,
+  });
+  const baseboard = new THREE.Mesh(
+    new THREE.BoxGeometry(16, 0.35, 0.08),
+    trimMaterial
+  );
+  baseboard.position.set(0, floorY + 0.175, wallZ + 0.04);
+  scene.add(baseboard);
+}
+
 export function buildEnvironment(scene, projects, categoryOrder) {
   var layoutResult = buildModuleLayout(projects, categoryOrder);
   var sections = layoutResult.sections;
   var modules = layoutResult.modules;
   var metrics = layoutResult.metrics;
   var localLights = [];
+
+  // Add baseboard and marble floor at the bottom of the scroll
+  buildFloorAndBaseboard(scene, metrics);
 
   addWallBounds(scene);
 
