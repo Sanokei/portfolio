@@ -95,6 +95,12 @@ async function main() {
     carouselCtrl = nextCarouselCtrl;
     environmentCtrl = nextEnvironmentCtrl;
     interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons);
+    
+    // Verification hooks
+    window.plaqueObjects = plaqueObjects;
+    window.carouselCtrl = nextCarouselCtrl;
+    window.camera = camera;
+
     root.visible = true;
 
     const floorY = -114;

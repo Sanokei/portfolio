@@ -32,24 +32,6 @@ export const projects = [
     ],
   },
   {
-    id: 18,
-    name: 'Fish out of Water',
-    category: 'Games',
-    year: 2026,
-    subtitle: 'Video Game, Narrative, Workplace',
-    description:
-      'A fish leaves the suburbs for the big city and lands a first job at a human ' +
-      'canning factory, weighing moral decisions while trying not to get fired.',
-    tags: ['Development', 'Writing', 'Design'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/fish-out-of-water', icon: 'itchio' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/fish-out-of-water', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'image', src: 'img/fish-out-of-water.webp' },
-    ],
-  },
-  {
     id: 19,
     name: 'Handjob: The Blower Gallery',
     category: 'Games',
@@ -69,89 +51,28 @@ export const projects = [
     ],
   },
   {
-    id: 1,
-    name: "Coot's Bug Squasher",
+    id: 18,
+    name: 'Fish out of Water',
     category: 'Games',
     year: 2024,
-    subtitle: 'Video Game, Narrative, Puzzle, Coding',
+    subtitle: 'Video Game, Narrative, Workplace',
     description:
-      'A hacking game about a cat who puts themselves into computers ' +
-      'to get through security measures. Features a custom toylang called AlphaJargon.',
-    tags: ['Development', 'Design', 'UI/UX', 'Pixel Art'],
+      'A fish leaves the suburbs for the big city and lands a first job at a human ' +
+      'canning factory, weighing moral decisions while trying not to get fired.',
+    tags: ['Development', 'Writing', 'Design'],
     links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/coots-bug-squasher', icon: 'itchio' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/Coots-Bug-Squasher', icon: 'gh' },
+      { label: 'itch.io', url: 'https://sanokei.itch.io/fish-out-of-water', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/fish-out-of-water', icon: 'gh' },
     ],
     assets: [
-      { type: 'video', src: 'video/coots.mp4' },
-      { type: 'image', src: 'img/coots-1.webp' },
-      { type: 'image', src: 'img/coots-2.webp' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Adventure of Sir Robin',
-    category: 'Games',
-    year: 2024,
-    subtitle: 'Video Game, Adventure, Narrative',
-    description:
-      'An adventure game about a magically intelligent bag. ' +
-      'The twist? The bag\'s intelligence was the player all along.',
-    tags: ['Development', 'Design', 'UI/UX'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/adventure-of-sir-robin', icon: 'itchio' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/AdventureOfSirRobin', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'video', src: 'video/sirrobin.mp4' },
-      { type: 'image', src: 'img/sir-robin-1.webp' },
-      { type: 'image', src: 'img/sir-robin-2.webp' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Intern',
-    category: 'Games',
-    year: 2024,
-    subtitle: 'Video Game, Mini-games',
-    description:
-      'A god game where the player fixes the mistakes of a bumbling intern, ' +
-      'before the stress fractures the world around them.',
-    tags: ['Development', 'Design', 'UI/UX'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/intern', icon: 'itchio' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/Intern', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'video', src: 'video/intern.mp4' },
-      { type: 'image', src: 'img/intern-1.webp' },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Productivity App',
-    category: 'Games',
-    year: 2024,
-    subtitle: 'Video Game, Narrative (WIP)',
-    description:
-      'A meta-narrative walking simulator about productivity, artistic expression, ' +
-      'and the toxic battle within ourselves. Inspired by ludonarrative dissonance.',
-    tags: ['Development', 'Design', 'UI/UX'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/productivity-app', icon: 'itchio' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/Productivity-App', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'video', src: 'video/productivity.mp4' },
-      { type: 'image', src: 'img/productivity-1.webp' },
-      { type: 'image', src: 'img/piano.webp' },
+      { type: 'image', src: 'img/fish-out-of-water.webp' },
     ],
   },
   {
     id: 5,
     name: 'Corruption',
     category: 'Games',
-    year: 2024,
+    year: 2023,
     subtitle: 'Video Game, Management',
     description:
       'A swiping management game where the player is a dictator deciding whether ' +
@@ -168,10 +89,89 @@ export const projects = [
     ],
   },
   {
+    id: 2,
+    name: 'Adventure of Sir Robin',
+    category: 'Games',
+    year: 2023,
+    subtitle: 'Video Game, Adventure, Narrative',
+    description:
+      'An adventure game about a magically intelligent bag. ' +
+      'The twist? The bag\'s intelligence was the player all along.',
+    tags: ['Development', 'Design', 'UI/UX'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/adventure-of-sir-robin', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/AdventureOfSirRobin', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'video', src: 'video/sirrobin.mp4' },
+      { type: 'image', src: 'img/sir-robin-1.webp' },
+      { type: 'image', src: 'img/sir-robin-2.webp' },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Productivity App',
+    category: 'Games',
+    year: 2023,
+    subtitle: 'Video Game, Narrative (WIP)',
+    description:
+      'A meta-narrative walking simulator about productivity, artistic expression, ' +
+      'and the toxic battle within ourselves. Inspired by ludonarrative dissonance.',
+    tags: ['Development', 'Design', 'UI/UX'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/productivity-app', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/Productivity-App', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'video', src: 'video/productivity.mp4' },
+      { type: 'image', src: 'img/productivity-1.webp' },
+      { type: 'image', src: 'img/piano.webp' },
+    ],
+  },
+  {
+    id: 1,
+    name: "Coot's Bug Squasher",
+    category: 'Games',
+    year: 2023,
+    subtitle: 'Video Game, Narrative, Puzzle, Coding',
+    description:
+      'A hacking game about a cat who puts themselves into computers ' +
+      'to get through security measures. Features a custom toylang called AlphaJargon.',
+    tags: ['Development', 'Design', 'UI/UX', 'Pixel Art'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/coots-bug-squasher', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/Coots-Bug-Squasher', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'video', src: 'video/coots.mp4' },
+      { type: 'image', src: 'img/coots-1.webp' },
+      { type: 'image', src: 'img/coots-2.webp' },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Intern',
+    category: 'Games',
+    year: 2021,
+    subtitle: 'Video Game, Mini-games',
+    description:
+      'A god game where the player fixes the mistakes of a bumbling intern, ' +
+      'before the stress fractures the world around them.',
+    tags: ['Development', 'Design', 'UI/UX'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/intern', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/Intern', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'video', src: 'video/intern.mp4' },
+      { type: 'image', src: 'img/intern-1.webp' },
+    ],
+  },
+  {
     id: 6,
     name: 'Curling The Herd',
     category: 'Games',
-    year: 2024,
+    year: 2021,
     subtitle: 'Video Game, Top-down',
     description:
       'My first game jam submission. A curling pro slime destroys ' +
@@ -220,6 +220,24 @@ export const projects = [
     assets: [],
   },
   {
+    id: 11,
+    name: 'clamtap',
+    category: 'Websites',
+    year: 2024,
+    subtitle: 'Website Template',
+    description:
+      'A landing page mock-up for an NFC-based tap-to-pay SaaS consisting of just a phone.',
+    tags: ['Development', 'Design', 'UI/UX'],
+    links: [
+      { label: 'Website', url: 'https://sanokei.github.io/clamtap/', icon: 'web' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/clamtap', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'image', src: 'img/clamtap1.webp' },
+      { type: 'image', src: 'img/clamtap2.webp' },
+    ],
+  },
+  {
     id: 7,
     name: 'The Arcane Observer',
     category: 'Websites',
@@ -236,6 +254,23 @@ export const projects = [
     assets: [
       { type: 'image', src: 'img/4-1-24_ArcaneObserver.webp' },
       { type: 'image', src: 'img/4-5-24_ArcaneObserver.webp' },
+    ],
+  },
+  {
+    id: 9,
+    name: 'Emoji Game',
+    category: 'Websites',
+    year: 2024,
+    subtitle: 'Web Game (Archived)',
+    description:
+      'An AI-powered emoji movie name guessing game. ' +
+      'Gives the user emojis and they guess what movie the AI is thinking of.',
+    tags: ['Development', 'Design', 'UI/UX'],
+    links: [
+      { label: 'GitHub', url: 'https://github.com/Sanokei/Emoji-Game', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'video', src: 'img/emoji-game.mp4' },
     ],
   },
   {
@@ -257,27 +292,10 @@ export const projects = [
     ],
   },
   {
-    id: 9,
-    name: 'Emoji Game',
-    category: 'Websites',
-    year: 2024,
-    subtitle: 'Web Game (Archived)',
-    description:
-      'An AI-powered emoji movie name guessing game. ' +
-      'Gives the user emojis and they guess what movie the AI is thinking of.',
-    tags: ['Development', 'Design', 'UI/UX'],
-    links: [
-      { label: 'GitHub', url: 'https://github.com/Sanokei/Emoji-Game', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'video', src: 'img/emoji-game.mp4' },
-    ],
-  },
-  {
     id: 10,
     name: 'ExNoto',
     category: 'Websites',
-    year: 2024,
+    year: 2023,
     subtitle: 'Website Template',
     description:
       'A landing page mock-up for a potential AI translator app or other SaaS project.',
@@ -291,31 +309,12 @@ export const projects = [
       { type: 'video', src: 'img/exnoto-2.mp4' },
     ],
   },
-  {
-    id: 11,
-    name: 'clamtap',
-    category: 'Websites',
-    year: 2024,
-    subtitle: 'Website Template',
-    description:
-      'A landing page mock-up for an NFC-based tap-to-pay SaaS consisting of just a phone.',
-    tags: ['Development', 'Design', 'UI/UX'],
-    links: [
-      { label: 'Website', url: 'https://sanokei.github.io/clamtap/', icon: 'web' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/clamtap', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'image', src: 'img/clamtap1.webp' },
-      { type: 'image', src: 'img/clamtap2.webp' },
-    ],
-  },
-
   // ── PROGRAMS ───────────────────────────────────────────
   {
     id: 22,
     name: 'TrainEngine',
     category: 'Programs',
-    year: 2026,
+    year: 2025,
     subtitle: 'Visual Novel Engine, Kaplay',
     description:
       'A visual novel engine built on the Kaplay framework, designed to support ' +
@@ -330,7 +329,7 @@ export const projects = [
     id: 12,
     name: 'VOD Highlighter',
     category: 'Programs',
-    year: 2024,
+    year: 2021,
     subtitle: 'Machine Learning, BERT',
     description:
       'Originally an AI program trained on BERT to cut down boring university lectures, ' +
@@ -345,7 +344,7 @@ export const projects = [
     id: 13,
     name: 'David The Duck',
     category: 'Programs',
-    year: 2024,
+    year: 2021,
     subtitle: 'Desktop Pet',
     description:
       'A desktop pet that waddles around your screen and gets into mischief. ' +
