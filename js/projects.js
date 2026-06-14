@@ -26,9 +26,9 @@ export const projects = [
       { label: 'itch.io', url: 'https://sanokei.itch.io/we-mice', icon: 'itchio' },
     ],
     assets: [
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzIyOS5wbmc=/original/KXO1D2.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzMy5wbmc=/original/%2Fciphn.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzNC5wbmc=/original/jyCLWH.png' },
+      { type: 'image', src: 'img/we-mice-1.webp' },
+      { type: 'image', src: 'img/we-mice-2.webp' },
+      { type: 'image', src: 'img/we-mice-3.webp' },
     ],
   },
   {
@@ -46,7 +46,7 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/fish-out-of-water', icon: 'gh' },
     ],
     assets: [
-      { type: 'image', src: 'https://img.itch.zone/aW1nLzE5MDcxODU4LnBuZw==/original/BvpEq%2F.png' },
+      { type: 'image', src: 'img/fish-out-of-water.webp' },
     ],
   },
   {
@@ -63,9 +63,9 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/Handjob-The-Blower-Gallery', icon: 'gh' },
     ],
     assets: [
-      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Truck.mov' },
-      { type: 'image', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/_Table.png' },
-      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Heist.mov' },
+      { type: 'video', src: 'img/handjob-truck.mp4' },
+      { type: 'image', src: 'img/handjob-table.webp' },
+      { type: 'video', src: 'img/handjob-heist.mp4' },
     ],
   },
   {
@@ -84,8 +84,8 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/coots.mp4' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMTk0NDA5NS8xNTMxMjI5OS5wbmc=/original/yoWHzX.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMTk0NDA5NS8xNTMxMjI5OC5wbmc=/original/zTHk4q.png' },
+      { type: 'image', src: 'img/coots-1.webp' },
+      { type: 'image', src: 'img/coots-2.webp' },
     ],
   },
   {
@@ -104,8 +104,8 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/sirrobin.mp4' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMjE2MDc5Ny8xMjczMjcxMS5wbmc=/original/dPcIrV.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMjE2MDc5Ny8xMjczMjcyMy5wbmc=/original/uNqqen.png' },
+      { type: 'image', src: 'img/sir-robin-1.webp' },
+      { type: 'image', src: 'img/sir-robin-2.webp' },
     ],
   },
   {
@@ -124,7 +124,7 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/intern.mp4' },
-      { type: 'image', src: 'https://img.itch.zone/aW1nLzEyODQ4NzgyLnBuZw==/315x250%23c/%2F7KLj3.png' },
+      { type: 'image', src: 'img/intern-1.webp' },
     ],
   },
   {
@@ -143,8 +143,8 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/productivity.mp4' },
-      { type: 'image', src: 'https://img.itch.zone/aW1nLzE1NTcwNzUyLnBuZw==/315x250%23c/EgGZ9u.png' },
-      { type: 'image', src: 'img/piano.png' },
+      { type: 'image', src: 'img/productivity-1.webp' },
+      { type: 'image', src: 'img/piano.webp' },
     ],
   },
   {
@@ -163,8 +163,8 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/corruption.mp4' },
-      { type: 'image', src: 'https://img.itch.zone/aW1nLzEyODkzNDAzLnBuZw==/original/9m0xOZ.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMjE4MzU0MC8xNTY0ODI5MS5wbmc=/original/2t8Kat.png' },
+      { type: 'image', src: 'img/corruption-1.webp' },
+      { type: 'image', src: 'img/corruption-2.webp' },
     ],
   },
   {
@@ -183,7 +183,7 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/curling.mp4' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMTI3MzMwMS8xNTY0ODMzNi5wbmc=/original/W%2BKzn9.png' },
+      { type: 'image', src: 'img/curling-1.webp' },
     ],
   },
 
@@ -234,8 +234,8 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/ArcaneObserver/', icon: 'gh' },
     ],
     assets: [
-      { type: 'image', src: 'img/4-1-24_ArcaneObserver.png' },
-      { type: 'image', src: 'img/4-5-24_ArcaneObserver.png' },
+      { type: 'image', src: 'img/4-1-24_ArcaneObserver.webp' },
+      { type: 'image', src: 'img/4-5-24_ArcaneObserver.webp' },
     ],
   },
   {
@@ -253,7 +253,7 @@ export const projects = [
     ],
     assets: [
       { type: 'video', src: 'video/doodle.mp4' },
-      { type: 'image', src: 'img/doodle.png' },
+      { type: 'image', src: 'img/doodle.webp' },
     ],
   },
   {
@@ -270,7 +270,7 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/Emoji-Game', icon: 'gh' },
     ],
     assets: [
-      { type: 'image', src: 'img/emoji-game.gif' },
+      { type: 'video', src: 'img/emoji-game.mp4' },
     ],
   },
   {
@@ -287,8 +287,8 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/ExNoto', icon: 'gh' },
     ],
     assets: [
-      { type: 'image', src: 'https://camo.githubusercontent.com/9115e5041cf4d477c7d803f0e3395b59223456601939dbba0cd193e45524ade4/68747470733a2f2f66696c65732e636174626f782e6d6f652f6675747430612e676966' },
-      { type: 'image', src: 'https://camo.githubusercontent.com/6ee54c835789b7dca22a5ed9ce787ef351b9cffe37272b9c5df3b0504f62bd67/68747470733a2f2f66696c65732e636174626f782e6d6f652f7272353536652e676966' },
+      { type: 'video', src: 'img/exnoto-1.mp4' },
+      { type: 'video', src: 'img/exnoto-2.mp4' },
     ],
   },
   {
@@ -305,8 +305,8 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/clamtap', icon: 'gh' },
     ],
     assets: [
-      { type: 'image', src: 'img/clamtap1.png' },
-      { type: 'image', src: 'img/clamtap2.png' },
+      { type: 'image', src: 'img/clamtap1.webp' },
+      { type: 'image', src: 'img/clamtap2.webp' },
     ],
   },
 
@@ -355,7 +355,7 @@ export const projects = [
       { label: 'GitHub', url: 'https://github.com/Sanokei/David-The-Duck', icon: 'gh' },
     ],
     assets: [
-      { type: 'image', src: 'https://github.com/Sanokei/David-The-Duck/raw/main/resources/images/david_the_duck_logo.jpg' },
+      { type: 'image', src: 'img/david-the-duck-logo.webp' },
       { type: 'image', src: 'img/GifODavid.gif' },
     ],
   },

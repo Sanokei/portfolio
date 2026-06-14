@@ -8,6 +8,7 @@ const DECAL_Z_OFFSET = 0.105;
 const DECAL_PLACEMENTS = [
   { afterId: 2, kind: 'rules', side: -1, rotate: 0 },
   { afterId: 4, kind: 'restrooms', side: 1, rotate: 0 },
+  { afterId: 5, kind: 'doNotTouch', side: -1, rotate: 0 },
 ];
 
 const decalMaterials = new Map();
@@ -241,10 +242,17 @@ function drawRulesTexture() {
     ctx.fillText('No flash photography', 70, 162);
     ctx.fillText('No eating or drinking', 70, 213);
     ctx.fillText('No sitting or sleeping', 70, 264);
+  });
+}
 
-    ctx.font = '39px "Univers", "Helvetica Neue", Helvetica, Arial, sans-serif';
-    ctx.fillText('Please do not touch', 88, 386);
-    ctx.fillText('the artworks', 88, 434);
+function drawDoNotTouchTexture() {
+  return makeTransparentTexture(720, 260, (ctx) => {
+    setInk(ctx);
+    ctx.font = '700 44px "Univers", "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Please do not touch', 70, 70);
+    ctx.fillText('the artworks', 70, 126);
   });
 }
 
@@ -451,6 +459,7 @@ function getMaterial(kind) {
   }
   const factories = {
     rules: drawRulesTexture,
+    doNotTouch: drawDoNotTouchTexture,
     giftShop: drawGiftShopTexture,
     doNotTap: drawDoNotTapTexture,
     youAreHere: drawYouAreHereTexture,
@@ -462,6 +471,7 @@ function getMaterial(kind) {
 function getTemplateSize(kind) {
   const sizes = {
     rules: { width: 1.82, height: 1.22 },
+    doNotTouch: { width: 1.44, height: 0.52 },
     restrooms: { width: 0.75, height: 1.0 },
     giftShop: { width: 1.48, height: 0.54 },
     doNotTap: { width: 1.36, height: 0.54 },
