@@ -13,9 +13,66 @@
 export const projects = [
   // ── GAMES ──────────────────────────────────────────────
   {
+    id: 17,
+    name: 'We Mice',
+    category: 'Games',
+    year: 2026,
+    subtitle: '3D Multiplayer Parkour (WIP)',
+    description:
+      'An in-development 3D multiplayer parkour game where players build a course ' +
+      'on the fly, then race from the start flag to the goal while inconveniencing each other.',
+    tags: ['Development', 'Design', 'Multiplayer', '3D'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/we-mice', icon: 'itchio' },
+    ],
+    assets: [
+      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzIyOS5wbmc=/original/KXO1D2.png' },
+      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzMy5wbmc=/original/%2Fciphn.png' },
+      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzNC5wbmc=/original/jyCLWH.png' },
+    ],
+  },
+  {
+    id: 18,
+    name: 'Fish out of Water',
+    category: 'Games',
+    year: 2026,
+    subtitle: 'Video Game, Narrative, Workplace',
+    description:
+      'A fish leaves the suburbs for the big city and lands a first job at a human ' +
+      'canning factory, weighing moral decisions while trying not to get fired.',
+    tags: ['Development', 'Writing', 'Design'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/fish-out-of-water', icon: 'itchio' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/fish-out-of-water', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'image', src: 'https://img.itch.zone/aW1nLzE5MDcxODU4LnBuZw==/original/BvpEq%2F.png' },
+    ],
+  },
+  {
+    id: 19,
+    name: 'Handjob: The Blower Gallery',
+    category: 'Games',
+    year: 2026,
+    subtitle: 'AI FMV Game Proof of Concept',
+    description:
+      'A proof of concept for an AI FMV game about anthropomorphic hands planning ' +
+      'and executing a heist together, then dealing with its aftermath.',
+    tags: ['Development', 'AI', 'FMV', 'Design'],
+    links: [
+      { label: 'GitHub', url: 'https://github.com/Sanokei/Handjob-The-Blower-Gallery', icon: 'gh' },
+    ],
+    assets: [
+      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Truck.mov' },
+      { type: 'image', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/_Table.png' },
+      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Heist.mov' },
+    ],
+  },
+  {
     id: 1,
     name: "Coot's Bug Squasher",
     category: 'Games',
+    year: 2024,
     subtitle: 'Video Game, Narrative, Puzzle, Coding',
     description:
       'A hacking game about a cat who puts themselves into computers ' +
@@ -35,6 +92,7 @@ export const projects = [
     id: 2,
     name: 'Adventure of Sir Robin',
     category: 'Games',
+    year: 2024,
     subtitle: 'Video Game, Adventure, Narrative',
     description:
       'An adventure game about a magically intelligent bag. ' +
@@ -54,6 +112,7 @@ export const projects = [
     id: 3,
     name: 'Intern',
     category: 'Games',
+    year: 2024,
     subtitle: 'Video Game, Mini-games',
     description:
       'A god game where the player fixes the mistakes of a bumbling intern, ' +
@@ -72,6 +131,7 @@ export const projects = [
     id: 4,
     name: 'Productivity App',
     category: 'Games',
+    year: 2024,
     subtitle: 'Video Game, Narrative (WIP)',
     description:
       'A meta-narrative walking simulator about productivity, artistic expression, ' +
@@ -91,6 +151,7 @@ export const projects = [
     id: 5,
     name: 'Corruption',
     category: 'Games',
+    year: 2024,
     subtitle: 'Video Game, Management',
     description:
       'A swiping management game where the player is a dictator deciding whether ' +
@@ -110,6 +171,7 @@ export const projects = [
     id: 6,
     name: 'Curling The Herd',
     category: 'Games',
+    year: 2024,
     subtitle: 'Video Game, Top-down',
     description:
       'My first game jam submission. A curling pro slime destroys ' +
@@ -124,66 +186,44 @@ export const projects = [
       { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvMTI3MzMwMS8xNTY0ODMzNi5wbmc=/original/W%2BKzn9.png' },
     ],
   },
-  {
-    id: 17,
-    name: 'We Mice',
-    category: 'Games',
-    subtitle: '3D Multiplayer Parkour (WIP)',
-    description:
-      'An in-development 3D multiplayer parkour game where players build a course ' +
-      'on the fly, then race from the start flag to the goal while inconveniencing each other.',
-    tags: ['Development', 'Design', 'Multiplayer', '3D'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/we-mice', icon: 'itchio' },
-    ],
-    assets: [
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzIyOS5wbmc=/original/KXO1D2.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzMy5wbmc=/original/%2Fciphn.png' },
-      { type: 'image', src: 'https://img.itch.zone/aW1hZ2UvNDY0NzExNC8yNzY5NzMzNC5wbmc=/original/jyCLWH.png' },
-    ],
-  },
-  {
-    id: 18,
-    name: 'Fish out of Water',
-    category: 'Games',
-    subtitle: 'Video Game, Narrative, Workplace',
-    description:
-      'A fish leaves the suburbs for the big city and lands a first job at a human ' +
-      'canning factory, weighing moral decisions while trying not to get fired.',
-    tags: ['Development', 'Writing', 'Design'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/fish-out-of-water', icon: 'itchio' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/fish-out-of-water', icon: 'gh' },
-    ],
-    assets: [
-      { type: 'image', src: 'https://img.itch.zone/aW1nLzE5MDcxODU4LnBuZw==/original/BvpEq%2F.png' },
-    ],
-  },
-  {
-    id: 19,
-    name: 'Handjob: The Blower Gallery',
-    category: 'Games',
-    subtitle: 'AI FMV Game Proof of Concept',
-    description:
-      'A proof of concept for an AI FMV game about anthropomorphic hands planning ' +
-      'and executing a heist together, then dealing with its aftermath.',
-    tags: ['Development', 'AI', 'FMV', 'Design'],
-    links: [
-      { label: 'GitHub', url: 'https://github.com/Sanokei/Handjob-The-Blower-Gallery', icon: 'gh' },
-      { label: 'Media', url: 'https://github.com/Sanokei/Handjob-The-Blower-Gallery/tree/main/Assets/Art/Intro', icon: 'web' },
-    ],
-    assets: [
-      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Truck.mov' },
-      { type: 'image', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/_Table.png' },
-      { type: 'video', src: 'https://raw.githubusercontent.com/Sanokei/Handjob-The-Blower-Gallery/main/Assets/Art/Intro/Heist.mov' },
-    ],
-  },
 
   // ── WEBSITES ───────────────────────────────────────────
+  {
+    id: 20,
+    name: 'Art Allergy',
+    category: 'Websites',
+    year: 2026,
+    subtitle: 'Independent Creative House',
+    description:
+      'An independent creative house for experimental publishing, games, films, ' +
+      'prints, and creator-led projects.',
+    tags: ['Web Development', 'Design', 'Creative Direction'],
+    links: [
+      { label: 'Website', url: 'https://artallergy.com/', icon: 'artallergy' },
+    ],
+    assets: [],
+  },
+  {
+    id: 21,
+    name: 'Index of Babel',
+    category: 'Websites',
+    year: 2026,
+    subtitle: 'Retro Directory Index, ARG, WIP',
+    description:
+      'A retro Apache-style directory index backed by SpaceTimeDB, where dormant ' +
+      'directory blueprints generate metadata and file bodies materialize only when clicked.',
+    tags: ['Development', 'Systems', 'ARG'],
+    links: [
+      { label: 'Website', url: 'https://indexofbabel.com/', icon: 'web' },
+      { label: 'GitHub', url: 'https://github.com/Sanokei/indexofbabel', icon: 'gh' },
+    ],
+    assets: [],
+  },
   {
     id: 7,
     name: 'The Arcane Observer',
     category: 'Websites',
+    year: 2024,
     subtitle: 'Newspaper, Fantasy Narrative',
     description:
       'A self-updating magic newspaper that takes the top oddities of the day ' +
@@ -202,6 +242,7 @@ export const projects = [
     id: 8,
     name: '[ new tab ] - Doodle',
     category: 'Websites',
+    year: 2024,
     subtitle: 'Productivity, Art, Drawing',
     description:
       'A Chrome extension new-tab doodle pad so you always have a place to jot ' +
@@ -219,6 +260,7 @@ export const projects = [
     id: 9,
     name: 'Emoji Game',
     category: 'Websites',
+    year: 2024,
     subtitle: 'Web Game (Archived)',
     description:
       'An AI-powered emoji movie name guessing game. ' +
@@ -235,6 +277,7 @@ export const projects = [
     id: 10,
     name: 'ExNoto',
     category: 'Websites',
+    year: 2024,
     subtitle: 'Website Template',
     description:
       'A landing page mock-up for a potential AI translator app or other SaaS project.',
@@ -252,6 +295,7 @@ export const projects = [
     id: 11,
     name: 'clamtap',
     category: 'Websites',
+    year: 2024,
     subtitle: 'Website Template',
     description:
       'A landing page mock-up for an NFC-based tap-to-pay SaaS consisting of just a phone.',
@@ -265,41 +309,28 @@ export const projects = [
       { type: 'image', src: 'img/clamtap2.png' },
     ],
   },
-  {
-    id: 20,
-    name: 'Art Allergy',
-    category: 'Websites',
-    subtitle: 'Independent Creative House',
-    description:
-      'An independent creative house for experimental publishing, games, films, ' +
-      'prints, and creator-led projects.',
-    tags: ['Web Development', 'Design', 'Creative Direction'],
-    links: [
-      { label: 'Website', url: 'https://artallergy.com/', icon: 'artallergy' },
-    ],
-    assets: [],
-  },
-  {
-    id: 21,
-    name: 'Index of Babel',
-    category: 'Websites',
-    subtitle: 'Retro Directory Index, ARG, WIP',
-    description:
-      'A retro Apache-style directory index backed by SpaceTimeDB, where dormant ' +
-      'directory blueprints generate metadata and file bodies materialize only when clicked.',
-    tags: ['Development', 'Systems', 'ARG'],
-    links: [
-      { label: 'Website', url: 'https://indexofbabel.com/', icon: 'web' },
-      { label: 'GitHub', url: 'https://github.com/Sanokei/indexofbabel', icon: 'gh' },
-    ],
-    assets: [],
-  },
 
   // ── PROGRAMS ───────────────────────────────────────────
+  {
+    id: 22,
+    name: 'TrainEngine',
+    category: 'Programs',
+    year: 2026,
+    subtitle: 'Visual Novel Engine, Kaplay',
+    description:
+      'A visual novel engine built on the Kaplay framework, designed to support ' +
+      'Steamy-style VN projects and plugin-driven UI tooling.',
+    tags: ['Development', 'Tools', 'Kaplay'],
+    links: [
+      { label: 'GitHub', url: 'https://github.com/Sanokei/TrainEngine', icon: 'gh' },
+    ],
+    assets: [], // screenshots to be added later
+  },
   {
     id: 12,
     name: 'VOD Highlighter',
     category: 'Programs',
+    year: 2024,
     subtitle: 'Machine Learning, BERT',
     description:
       'Originally an AI program trained on BERT to cut down boring university lectures, ' +
@@ -314,6 +345,7 @@ export const projects = [
     id: 13,
     name: 'David The Duck',
     category: 'Programs',
+    year: 2024,
     subtitle: 'Desktop Pet',
     description:
       'A desktop pet that waddles around your screen and gets into mischief. ' +
@@ -327,26 +359,13 @@ export const projects = [
       { type: 'image', src: 'img/GifODavid.gif' },
     ],
   },
-  {
-    id: 22,
-    name: 'TrainEngine',
-    category: 'Programs',
-    subtitle: 'Visual Novel Engine, Kaplay',
-    description:
-      'A visual novel engine built on the Kaplay framework, designed to support ' +
-      'Steamy-style VN projects and plugin-driven UI tooling.',
-    tags: ['Development', 'Tools', 'Kaplay'],
-    links: [
-      { label: 'GitHub', url: 'https://github.com/Sanokei/TrainEngine', icon: 'gh' },
-    ],
-    assets: [], // screenshots to be added later
-  },
 
   // ── VIDEOS ─────────────────────────────────────────────
   {
     id: 14,
     name: 'Sano Fails to Sell Spotify™ Tattoos',
     category: 'Videos',
+    year: 2024,
     subtitle: 'AI Art, Satire',
     description:
       'A satirical video about using AI art for personal benefit, ' +
@@ -365,6 +384,7 @@ export const projects = [
     id: 15,
     name: 'Merlin Economics',
     category: 'Board Games',
+    year: 2024,
     subtitle: 'Hand Management, Commodity Speculation, Blind Auctioning',
     description:
       'A board game that applies real-world economic principles to a fictional wizard world. ' +
@@ -379,6 +399,7 @@ export const projects = [
     id: 16,
     name: 'Kanta',
     category: 'Board Games',
+    year: 2024,
     subtitle: 'Hand Management, Betting, Statistics',
     description:
       'A two-player gambling card game with fantasy elements. Inspired by blackjack. ' +

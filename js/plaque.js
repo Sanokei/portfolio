@@ -180,7 +180,8 @@ function renderProjectTexture(project) {
 
     ctx.fillStyle = '#57514a';
     ctx.font = 'italic 23px "EB Garamond", Georgia, serif';
-    y = wrap(ctx, project.subtitle, 50, y, width - 100, 28, 2);
+    const subtitleText = project.year ? (project.subtitle + " — " + project.year) : project.subtitle;
+    y = wrap(ctx, subtitleText, 50, y, width - 100, 28, 2);
 
     ctx.strokeStyle = '#b89d62';
     ctx.lineWidth = 2;

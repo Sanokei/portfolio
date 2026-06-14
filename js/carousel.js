@@ -149,7 +149,6 @@ function createTextureForAsset(asset, project) {
 
   if (asset.type === 'video') {
     const video = document.createElement('video');
-    video.src = asset.src;
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
@@ -169,19 +168,9 @@ function createTextureForAsset(asset, project) {
       video,
       loaded: false,
       playPending: false,
+      src: asset.src,
+      isDeferred: true,
     };
-
-    const markReady = () => {
-      item.texture = videoTexture;
-      item.loaded = true;
-    };
-
-    video.addEventListener('loadeddata', markReady, { once: true });
-    video.addEventListener('canplay', markReady, { once: true });
-    video.addEventListener('error', () => { item.loaded = true; }, { once: true });
-    video.load();
-
-    if (video.readyState >= 2) markReady();
 
     return item;
   }
@@ -382,7 +371,7 @@ function syncActiveVideo(crt) {
     if (!video) continue;
 
     if (i === crt.state.active) {
-      if (video.paused && !item.playPending) {
+      if (video.paused && !item.playPending && !item.isDeferred) {
         item.playPending = true;
         try {
           Promise.resolve(video.play())
@@ -461,6 +450,26 @@ export function buildCarousels(scene, cavityData, camera, renderer) {
 
   function update(dt) {
     for (const crt of crts) {
+      const distY = Math.abs(crt.group.position.y - camera.position.y);
+      if (distY <= 8) {
+        for (const item of crt.media) {
+          if (item.isDeferred) {
+            const video = item.video;
+            video.src = item.src;
+            const markReady = () => {
+              item.texture = item.videoTexture;
+              item.loaded = true;
+            };
+            video.addEventListener('loadeddata', markReady, { once: true });
+            video.addEventListener('canplay', markReady, { once: true });
+            video.addEventListener('error', () => { item.loaded = true; }, { once: true });
+            video.load();
+            if (video.readyState >= 2) markReady();
+            delete item.isDeferred;
+          }
+        }
+      }
+
       const screenRect = projectCrtToScreen(crt);
       const screenVisible = isScreenActuallyVisible(screenRect);
       crt.group.visible = screenVisible;
