@@ -1,4 +1,4 @@
-# BRIEFING — 2026-06-14T05:52:56Z
+# BRIEFING — 2026-06-14T17:28:00Z
 
 ## Mission
 Implement deferred video loading/playback controls, add plaque years, sort projects descending by year within categories, and remove the Media link from the Handjob project.
@@ -16,7 +16,7 @@ Implement deferred video loading/playback controls, add plaque years, sort proje
 
 ## Current Parent
 - Conversation ID: 34699b8d-8443-4ddf-963f-4a863308b2eb
-- Updated: not yet
+- Updated: 2026-06-14T17:28:00Z
 
 ## Task Summary
 - **What to build**:
@@ -49,13 +49,15 @@ Implement deferred video loading/playback controls, add plaque years, sort proje
   - `js/carousel.js` — Implemented deferred video loading and camera-distance checks.
   - `js/projects.js` — Added years, reordered categories, removed Handjob media link.
   - `js/plaque.js` — Appended year to plaque subtitle using space-emdash-space formatting.
-- **Build status**: Parsed successfully in Node.js and verified serving correctly via local server.
+  - `js/main.js` — Exposed carousel/plaque/camera variables on `window` for automated test verification.
+- **Build status**: Checked with node compile/syntax checks, all pass.
 - **Pending issues**: None
 
 ## Quality Status
 - **Build/test result**: Pass (syntax verified and Node/server imports run successfully)
 - **Lint status**: N/A (no linter configured)
-- **Tests added/modified**: Verified all 22 projects via validation script.
+- **Tests added/modified**: Verified all 22 projects via validation script and ran complete E2E browser verification via Playwright (msedge channel) checking deferred loading, links, and text formatting.
 
 ## Loaded Skills
 - None
+

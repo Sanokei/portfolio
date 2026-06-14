@@ -1,9 +1,9 @@
 # Progress Tracker
 
-Last visited: 2026-06-14T05:55:00Z
+Last visited: 2026-06-14T17:28:00Z
 
 ## Active Task
-- None (All tasks completed)
+- None (All tasks completed successfully)
 
 ## Completed Tasks
 - Read and analyzed the existing codebase (`js/carousel.js`, `js/projects.js`, `js/plaque.js`).
@@ -13,6 +13,7 @@ Last visited: 2026-06-14T05:55:00Z
 - Modified project `Handjob: The Blower Gallery` to remove its Media link.
 - Modified plaque rendering subtitle block to append project year with em-dash format `" — "`.
 - Tested and verified syntax of all files and checked that the local HTTP server serves files correctly.
+- Created and executed automated E2E browser tests using Playwright against the local server to verify deferred loading, year display, category ordering, and Media link removal.
 
 ## Plan
 1. Read existing code files: `js/carousel.js`, `js/projects.js`, `js/plaque.js`.
@@ -20,4 +21,5 @@ Last visited: 2026-06-14T05:55:00Z
 3. Apply R1 (video deferred loading and distance-based play/pause).
 4. Apply R2 (project reordering, year field addition, and plaque text rendering).
 5. Apply R3 (remove Media link from Handjob).
-6. Verify and test the implementations.
+6. Verify and test the implementations via Playwright browser E2E tests.
+
