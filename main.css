@@ -113,6 +113,10 @@ html, body {
   transform: translateY(0);
 }
 
+#letterbox-bars.no-transition .letterbox-bar {
+  transition: none;
+}
+
 /* Scroll prompt appears after the bars land */
 #scroll-prompt {
   position: fixed;

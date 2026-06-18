@@ -256,9 +256,7 @@ function getModuleBounds(cavityData, index) {
 
 function addEndCaps(wallGroup, cavityData) {
   const wallTop = WALL_Y_CENTER + WALL_HEIGHT / 2;
-  const wallBottom = WALL_Y_CENTER - WALL_HEIGHT / 2;
   const topBottom = getModuleBounds(cavityData, 0).top;
-  const bottomTop = getModuleBounds(cavityData, cavityData.length - 1).bottom;
 
   addBox(
     wallGroup,
@@ -269,19 +267,10 @@ function addEndCaps(wallGroup, cavityData) {
     (wallTop + topBottom) / 2,
     0,
   );
-  addBox(
-    wallGroup,
-    WALL_WIDTH,
-    bottomTop - wallBottom,
-    WALL_THICKNESS,
-    0,
-    (bottomTop + wallBottom) / 2,
-    0,
-  );
 }
 
 export async function buildWall(scene, projects, categoryOrder, onProgress) {
-  const { modules: cavityData } = buildModuleLayout(projects, categoryOrder);
+  const { modules: cavityData, bottomTop } = buildModuleLayout(projects, categoryOrder);
   const wallGroup = new THREE.Group();
   scene.add(wallGroup);
 
@@ -290,6 +279,9 @@ export async function buildWall(scene, projects, categoryOrder, onProgress) {
   for (let i = 0; i < cavityData.length; i++) {
     const cd = cavityData[i];
     const bounds = getModuleBounds(cavityData, i);
+    if (i === cavityData.length - 1) {
+      bounds.bottom = bottomTop;
+    }
     wallGroup.add(createOpeningWall(cd, bounds.top, bounds.bottom));
     if (onProgress) onProgress(i + 1, cavityData.length);
     if (i % 4 === 3) await new Promise(resolve => setTimeout(resolve, 0));

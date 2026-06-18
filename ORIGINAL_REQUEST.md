@@ -63,3 +63,53 @@ Integrity mode: development
 - [ ] The plaques display the correct year of the project (e.g., "Video Game, Narrative, Puzzle, Coding — 2023").
 - [ ] In each category section, projects are ordered descending by year (newest on top, oldest at bottom).
 - [ ] The "Handjob" project plaque does not display the "Media" link button, only the "GitHub" link button.
+
+## Follow-up — 2026-06-17T20:37:09Z
+
+An interactive ending section for a 3D scroll-based museum portfolio website. It features a brick wall ending block with a recessed doorway, flickering overhead light, lamp post, garbage bin, and interactive pigeons on a sidewalk that fly away when clicked or when the user scrolls to the bottom.
+
+Working directory: `c:\Users\wkeif\Documents\GitHub\Portfolio`
+Integrity mode: development
+
+## Requirements
+
+### R1. Ending Section Layout & Wall
+- Remove the excess plaster wall below the last category of the portfolio.
+- Add an ending section that is the size of the screen height (matching the dynamic viewport height).
+- The ending wall should be textured as a brick wall, featuring an indent (recess) with a step up for a door.
+
+### R2. Lighting & Props
+- Place a door in the indent.
+- Add an overhead light source on top of the door entrance that flickers (with a dynamic blinking/flickering point/spot light).
+- Render a 3D lamp post on the left of the section and a 3D garbage bin on the right.
+
+### R3. Sidewalk & Interactive Pigeons
+- Add a sidewalk at the very bottom of the page.
+- Spawn a small flock of pigeons on the sidewalk.
+- Pigeons should fly away (animating upwards/away and scaling down) when:
+  1. The user scrolls to the bottom of the page.
+  2. The user clicks on or near the pigeons.
+
+### R4. Responsive Scroll Bounds & Code Integration
+- Update layout metrics (`layout.js`) to set appropriate camera scroll limits (`minY` bounds) and snap points for the ending section.
+- Ensure the changes are implemented cleanly in the existing modular vanilla ES modules setup without introducing any package managers, build processes, or bundlers.
+
+## Acceptance Criteria
+
+### Visuals & Styling
+- [ ] Plaster wall cleanly transitions into the new brick ending section without gaps.
+- [ ] Recessed door with step-up is clearly visible.
+- [ ] Flickering overhead light illuminates the doorway area dynamically.
+- [ ] Lamp post and garbage bin are correctly placed and styled.
+- [ ] Sidewalk sits at the bottom of the page.
+
+### Interactions
+- [ ] Pigeons are visible on the sidewalk when scrolling down.
+- [ ] Pigeons trigger fly-away animation when clicked.
+- [ ] Pigeons trigger fly-away animation when the scroll reaches the very bottom of the page.
+- [ ] Pigeons do not clip through other meshes when flying away.
+
+### Mechanics & Code Quality
+- [ ] Camera scroll bounds are updated so the camera stops exactly at the bottom of the ending section.
+- [ ] No console errors or performance lag introduced.
+- [ ] Responsive resize behaves correctly (ending section updates height on viewport size changes).

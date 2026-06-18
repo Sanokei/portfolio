@@ -187,6 +187,7 @@ export function getLayoutMetrics() {
     plaqueH,
     headerW,
     headerH,
+    endingWallHeight: Math.max(visibleWallHeight, 4.5 * objectScale),
   };
 }
 
@@ -289,7 +290,11 @@ export function buildModuleLayout(projects, categoryOrder) {
     cursorY = Math.min(normalNextStart, constrainedNextStart);
   }
 
-  const floorY = -114;
+  const lastModule = modules[modules.length - 1];
+  const lastBottom = lastModule ? Math.min(lastModule.worldY - lastModule.holeH / 2, lastModule.plaqueY - lastModule.plaqueH / 2) : startY;
+  const museumPadding = 2.0 * metrics.objectScale;
+  const bottomTop = lastBottom - museumPadding;
+  const floorY = bottomTop - metrics.endingWallHeight;
   const minY = floorY + metrics.visibleWallHeight / 2;
 
   return {
@@ -298,5 +303,7 @@ export function buildModuleLayout(projects, categoryOrder) {
     metrics,
     maxY: metrics.headerY,
     minY: minY,
+    floorY: floorY,
+    bottomTop: bottomTop,
   };
 }
