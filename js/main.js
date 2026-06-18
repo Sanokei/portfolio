@@ -94,7 +94,7 @@ async function main() {
     root = nextRoot;
     carouselCtrl = nextCarouselCtrl;
     environmentCtrl = nextEnvironmentCtrl;
-    interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons);
+    interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons, nextCarouselCtrl.carousels);
     
     // Verification hooks
     window.plaqueObjects = plaqueObjects;

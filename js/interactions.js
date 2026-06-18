@@ -12,15 +12,18 @@ let cameraRef = null;
 let rendererRef = null;
 let plaques = [];
 let crtButtons = [];
+let carousels = [];
 let hoveredLink = null;
 let hoveredButton = null;
+let hoveredCrt = null;
 let styleEl = null;
 
-export function initInteractions(camera, renderer, plaqueObjects, buttonObjects = []) {
+export function initInteractions(camera, renderer, plaqueObjects, buttonObjects = [], carouselObjects = []) {
   cameraRef = camera;
   rendererRef = renderer;
   plaques = plaqueObjects;
   crtButtons = buttonObjects;
+  carousels = carouselObjects;
 
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('click', onClick);
@@ -42,6 +45,7 @@ export function initInteractions(camera, renderer, plaqueObjects, buttonObjects 
       clearHover(rendererRef?.domElement);
       plaques = [];
       crtButtons = [];
+      carousels = [];
     },
   };
 }
@@ -56,6 +60,7 @@ function onMouseMove(e) {
   if (button) {
     hoveredButton = button;
     hoveredLink = null;
+    hoveredCrt = null;
     canvas.classList.add('interactive-hover');
     return;
   }
@@ -65,8 +70,19 @@ function onMouseMove(e) {
 
   if (link) {
     hoveredLink = link;
+    hoveredCrt = null;
+    canvas.classList.add('interactive-hover');
+    return;
+  }
+
+  hoveredLink = null;
+  const crt = getCrtAtPointer();
+
+  if (crt) {
+    hoveredCrt = crt;
     canvas.classList.add('interactive-hover');
   } else {
+    hoveredCrt = null;
     clearHover(canvas);
   }
 }
@@ -107,7 +123,42 @@ function getPlaqueLinkAtPointer() {
 function clearHover(canvas) {
   hoveredLink = null;
   hoveredButton = null;
+  hoveredCrt = null;
   if (canvas) canvas.classList.remove('interactive-hover');
+}
+
+function getProjectUrl(project) {
+  if (!project || !project.links || project.links.length === 0) return null;
+
+  // 1. Try to find 'Website'
+  const websiteLink = project.links.find(l => l.label.toLowerCase() === 'website');
+  if (websiteLink) return websiteLink.url;
+
+  // 2. Try to find 'itch.io'
+  const itchLink = project.links.find(l => l.label.toLowerCase() === 'itch.io');
+  if (itchLink) return itchLink.url;
+
+  // 3. Fallback to any link (e.g. GitHub, YouTube, etc.)
+  return project.links[0].url;
+}
+
+function getCrtAtPointer() {
+  if (carousels.length === 0) return null;
+  const groups = carousels.map(c => c.group);
+  const hits = raycaster.intersectObjects(groups, true);
+  if (hits.length === 0) return null;
+
+  const hit = hits[0];
+  // Find which carousel contains this intersected object
+  let current = hit.object;
+  while (current) {
+    const found = carousels.find(c => c.group === current);
+    if (found && found.cd && found.cd.project) {
+      return found;
+    }
+    current = current.parent;
+  }
+  return null;
 }
 
 function onClick(e) {
@@ -128,6 +179,16 @@ function onClick(e) {
     return;
   }
 
+  const clickedCrt = getCrtAtPointer();
+  if (clickedCrt) {
+    const url = getProjectUrl(clickedCrt.cd.project);
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    }
+    hoveredCrt = null;
+    return;
+  }
+
   if (hoveredButton) {
     hoveredButton.onClick();
     hoveredButton = null;
@@ -137,5 +198,14 @@ function onClick(e) {
   if (hoveredLink) {
     window.open(hoveredLink.zone.url, '_blank', 'noopener');
     hoveredLink = null;
+    return;
+  }
+
+  if (hoveredCrt) {
+    const url = getProjectUrl(hoveredCrt.cd.project);
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    }
+    hoveredCrt = null;
   }
 }
