@@ -201,7 +201,10 @@ export const projects = [
     links: [
       { label: 'Website', url: 'https://artallergy.com/', icon: 'artallergy' },
     ],
-    assets: [],
+    assets: [
+      { type: 'video', src: 'video/artallergy.mp4' },
+      { type: 'image', src: 'img/artallergy.webp' },
+    ],
   },
   {
     id: 21,
@@ -217,7 +220,9 @@ export const projects = [
       { label: 'Website', url: 'https://indexofbabel.com/', icon: 'web' },
       { label: 'GitHub', url: 'https://github.com/Sanokei/indexofbabel', icon: 'gh' },
     ],
-    assets: [],
+    assets: [
+      { type: 'image', src: 'img/indexofbabel.webp' },
+    ],
   },
   {
     id: 11,
