@@ -29,19 +29,6 @@ function disposeObjectGeometries(root) {
 }
 
 async function main() {
-  const hasWebGL = (() => {
-    try {
-      const c = document.createElement('canvas');
-      return !!(window.WebGLRenderingContext &&
-        (c.getContext('webgl') || c.getContext('experimental-webgl')));
-    } catch { return false; }
-  })();
-
-  if (!hasWebGL) {
-    window.location.href = './modern/index.html';
-    return;
-  }
-
   const { scene, camera, renderer } = initScene();
   let root = null;
   let interactionCtrl = null;
