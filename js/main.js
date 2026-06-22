@@ -10,9 +10,10 @@ import { projects, categoryOrder } from './projects.js?v=minimal-loader';
 import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
 import { buildCarousels } from './carousel.js?v=minimal-loader';
 import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=minimal-loader';
-import { buildEnvironment } from './environment.js?v=minimal-loader';
+import { buildEnvironment } from './environment.js?v=real-brick-pigeons';
 import { initInteractions } from './interactions.js?v=minimal-loader';
-import { getLayoutMetrics } from './layout.js?v=minimal-loader';
+import { initPlaqueFocus } from './plaqueFocus.js';
+import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=taxi-ending4';
 
 const INTRO_TIMING = {
   loadingFadeMs: 750,
@@ -28,26 +29,16 @@ function disposeObjectGeometries(root) {
 }
 
 async function main() {
-  const hasWebGL = (() => {
-    try {
-      const c = document.createElement('canvas');
-      return !!(window.WebGLRenderingContext &&
-        (c.getContext('webgl') || c.getContext('experimental-webgl')));
-    } catch { return false; }
-  })();
-
-  if (!hasWebGL) {
-    window.location.href = './modern/index.html';
-    return;
-  }
-
   const { scene, camera, renderer } = initScene();
   let root = null;
   let interactionCtrl = null;
   let carouselCtrl = { update() {}, dispose() {} };
   let environmentCtrl = { update() {} };
   let scrollCtrl = null;
+  let focusCtrl = null;
   let buildToken = 0;
+  let lastProjectY = 0;
+  let minScrollY = 0;
 
   // Loading progress bar helper.
   const loadingBar = document.getElementById('loading-bar-fill');
@@ -75,7 +66,7 @@ async function main() {
 
     buildWallDecals(nextRoot, cavityData);
     const nextCarouselCtrl = buildCarousels(nextRoot, cavityData, camera, renderer);
-    const nextEnvironmentCtrl = buildEnvironment(nextRoot, projects, categoryOrder);
+    const nextEnvironmentCtrl = buildEnvironment(nextRoot, projects, categoryOrder, camera, renderer);
     const metrics = getLayoutMetrics();
 
     // Header backdrop — a solid plaster panel that fills the viewport
@@ -86,6 +77,8 @@ async function main() {
 
     interactionCtrl?.dispose();
     carouselCtrl.dispose();
+    environmentCtrl.dispose?.();
+    focusCtrl?.dispose();
     if (root) {
       scene.remove(root);
       disposeObjectGeometries(root);
@@ -94,7 +87,8 @@ async function main() {
     root = nextRoot;
     carouselCtrl = nextCarouselCtrl;
     environmentCtrl = nextEnvironmentCtrl;
-    interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons, nextCarouselCtrl.carousels);
+    focusCtrl = initPlaqueFocus(scene, camera, plaqueObjects);
+    interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons, nextCarouselCtrl.carousels, focusCtrl);
     
     // Verification hooks
     window.plaqueObjects = plaqueObjects;
@@ -103,13 +97,19 @@ async function main() {
 
     root.visible = true;
 
-    const floorY = -114;
-    const minY = floorY + metrics.visibleWallHeight / 2;
-    const maxY = metrics.headerY;
+    const layoutResult = buildModuleLayout(projects, categoryOrder);
+    const floorY = layoutResult.floorY;
+    const minY = layoutResult.minY;
+    const maxY = layoutResult.maxY;
     setBounds(minY, maxY);
+
+    minScrollY = minY;
+    const lastModule = layoutResult.modules[layoutResult.modules.length - 1];
+    lastProjectY = lastModule ? lastModule.worldY : 0;
     setSnapPoints(
       cavityData.map(cd => cd.worldY),
       Math.min(maxY - 0.2, cavityData[0].worldY + metrics.visibleWallHeight * 0.5),
+      lastProjectY - 0.3 * metrics.spacing,
     );
 
     const desiredY = initial ? metrics.headerY : camera.position.y;
@@ -160,6 +160,7 @@ async function main() {
       if (promptQueued) return;
       promptQueued = true;
       window.setTimeout(enableScrollAndPrompt, INTRO_TIMING.promptDelayMs);
+      letterboxBars?.classList.add('no-transition');
     }
 
     if (loadingEl) loadingEl.classList.add('hidden');
@@ -187,8 +188,30 @@ async function main() {
     lastTime = now;
 
     if (scrollCtrl) scrollCtrl.update(dt);
-    environmentCtrl.update(camera.position.y);
+    environmentCtrl.update(camera.position.y, dt);
     carouselCtrl.update(dt, camera.position.y);
+    if (focusCtrl) focusCtrl.update(dt);
+
+    // Update letterbox bars transform
+    if (letterboxBars) {
+      const topBar = letterboxBars.querySelector('.letterbox-bar-top');
+      const bottomBar = letterboxBars.querySelector('.letterbox-bar-bottom');
+      if (topBar && bottomBar) {
+        const cameraY = camera.position.y;
+        if (cameraY >= lastProjectY) {
+          topBar.style.transform = '';
+          bottomBar.style.transform = '';
+        } else if (cameraY <= minScrollY) {
+          topBar.style.transform = 'translateY(-100%)';
+          bottomBar.style.transform = 'translateY(100%)';
+        } else {
+          const t = (cameraY - minScrollY) / (lastProjectY - minScrollY);
+          const percent = (1 - t) * 100;
+          topBar.style.transform = `translateY(-${percent}%)`;
+          bottomBar.style.transform = `translateY(${percent}%)`;
+        }
+      }
+    }
 
     renderer.render(scene, camera);
   }

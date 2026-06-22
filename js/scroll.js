@@ -15,6 +15,7 @@ let targetY = 0;
 let bounds = { min: -25, max: 8 };
 let snapPoints = [];
 let snapActivationMaxY = Number.NEGATIVE_INFINITY;
+let snapActivationMinY = Number.NEGATIVE_INFINITY;
 let snapIdleTimer = null;
 let cameraRef = null;
 let dragSurface = null;
@@ -50,12 +51,15 @@ export function setTargetY(y) {
   targetY = THREE.MathUtils.clamp(y, bounds.min, bounds.max);
 }
 
-export function setSnapPoints(points, activationMaxY) {
+export function setSnapPoints(points, activationMaxY, activationMinY) {
   snapPoints = [...points]
     .filter(Number.isFinite)
     .sort((a, b) => b - a);
   snapActivationMaxY = Number.isFinite(activationMaxY)
     ? activationMaxY
+    : Number.NEGATIVE_INFINITY;
+  snapActivationMinY = Number.isFinite(activationMinY)
+    ? activationMinY
     : Number.NEGATIVE_INFINITY;
   clearSnapTimer();
 }
@@ -223,7 +227,7 @@ function clearSnapTimer() {
 
 function snapToNearestProject() {
   if (isPointerDown || isTouching) return;
-  if (!snapPoints.length || targetY > snapActivationMaxY) return;
+  if (!snapPoints.length || targetY > snapActivationMaxY || targetY < snapActivationMinY) return;
 
   const nearest = getDirectionalNearestSnapPoint(targetY);
 

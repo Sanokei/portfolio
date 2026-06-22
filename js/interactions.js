@@ -13,17 +13,19 @@ let rendererRef = null;
 let plaques = [];
 let crtButtons = [];
 let carousels = [];
+let focusCtrlRef = null;
 let hoveredLink = null;
 let hoveredButton = null;
 let hoveredCrt = null;
 let styleEl = null;
 
-export function initInteractions(camera, renderer, plaqueObjects, buttonObjects = [], carouselObjects = []) {
+export function initInteractions(camera, renderer, plaqueObjects, buttonObjects = [], carouselObjects = [], focusCtrl = null) {
   cameraRef = camera;
   rendererRef = renderer;
   plaques = plaqueObjects;
   crtButtons = buttonObjects;
   carousels = carouselObjects;
+  focusCtrlRef = focusCtrl;
 
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('click', onClick);
@@ -46,6 +48,7 @@ export function initInteractions(camera, renderer, plaqueObjects, buttonObjects 
       plaques = [];
       crtButtons = [];
       carousels = [];
+      focusCtrlRef = null;
     },
   };
 }
@@ -100,24 +103,39 @@ function getButtonAtPointer() {
 }
 
 function getPlaqueLinkAtPointer() {
-  const intersectMeshes = plaques.map(p => p.mesh);
-  const hits = raycaster.intersectObjects(intersectMeshes);
-  if (hits.length === 0) return null;
+  const hit = getPlaqueHit();
+  if (!hit) return null;
 
-  const hit = hits[0];
-  const plaqueObj = plaques.find(p => p.mesh === hit.object);
-  if (!plaqueObj || !hit.uv) return null;
+  const { plaqueObj, uv } = hit;
+  if (!uv) return null;
 
   for (const zone of plaqueObj.linkZones) {
     if (
-      hit.uv.x >= zone.xMin && hit.uv.x <= zone.xMax &&
-      hit.uv.y >= zone.yMin && hit.uv.y <= zone.yMax
+      uv.x >= zone.xMin && uv.x <= zone.xMax &&
+      uv.y >= zone.yMin && uv.y <= zone.yMax
     ) {
       return { plaqueObj, zone };
     }
   }
 
   return null;
+}
+
+// Any plaque mesh under the pointer — regardless of link zone.  Used to
+// detect body taps that should trigger plaque focus on mobile.
+function getPlaqueAtPointer() {
+  return getPlaqueHit();
+}
+
+function getPlaqueHit() {
+  const intersectMeshes = plaques.map(p => p.mesh);
+  const hits = raycaster.intersectObjects(intersectMeshes);
+  if (hits.length === 0) return null;
+
+  const hit = hits[0];
+  const plaqueObj = plaques.find(p => p.mesh === hit.object);
+  if (!plaqueObj) return null;
+  return { plaqueObj, uv: hit.uv };
 }
 
 function clearHover(canvas) {
@@ -165,6 +183,30 @@ function onClick(e) {
   if (!cameraRef || !rendererRef) return;
   setRayFromEvent(e);
 
+  // ── Focused plaque mode ──────────────────────────────────────
+  // While a plaque is focused, a tap on that plaque's link still
+  // opens the URL; a tap on its body keeps focus; anything else
+  // (backdrop, another plaque, CRT, empty space) dismisses focus.
+  if (focusCtrlRef && focusCtrlRef.isFocused()) {
+    const focusedPlaque = focusCtrlRef.getFocusedPlaque();
+    const link = getPlaqueLinkAtPointer();
+    if (link && link.plaqueObj === focusedPlaque) {
+      window.open(link.zone.url, '_blank', 'noopener');
+      hoveredLink = null;
+      return;
+    }
+    const plaqueHit = getPlaqueAtPointer();
+    if (plaqueHit && plaqueHit.plaqueObj === focusedPlaque) {
+      // Body tap on the focused plaque — keep it focused.
+      return;
+    }
+    focusCtrlRef.dismiss('clickout');
+    hoveredLink = null;
+    hoveredButton = null;
+    hoveredCrt = null;
+    return;
+  }
+
   const clickedButton = getButtonAtPointer();
   if (clickedButton) {
     clickedButton.onClick();
@@ -175,6 +217,14 @@ function onClick(e) {
   const clickedLink = getPlaqueLinkAtPointer();
   if (clickedLink) {
     window.open(clickedLink.zone.url, '_blank', 'noopener');
+    hoveredLink = null;
+    return;
+  }
+
+  // Plaque body tap (no link) on a stacked/mobile plaque → focus it.
+  const plaqueHit = getPlaqueAtPointer();
+  if (plaqueHit && focusCtrlRef) {
+    focusCtrlRef.focus(plaqueHit.plaqueObj);
     hoveredLink = null;
     return;
   }

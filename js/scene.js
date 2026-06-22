@@ -44,12 +44,15 @@ export function initScene() {
   positionCamera(camera, WALL_Y_CENTER + WALL_HEIGHT / 2 - 2);
 
   const ambient = new THREE.AmbientLight(0xfff8ef, 0.68);
+  ambient.name = 'global-ambient-light';
   scene.add(ambient);
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0xb8ad9f, 0.48);
+  hemi.name = 'global-hemi-light';
   scene.add(hemi);
 
   const key = new THREE.DirectionalLight(0xfff0d8, 0.72);
+  key.name = 'global-key-light';
   key.position.set(14, 10, 6);
   key.castShadow = false;
   scene.add(key);
