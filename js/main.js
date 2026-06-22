@@ -12,6 +12,7 @@ import { buildCarousels } from './carousel.js?v=minimal-loader';
 import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=minimal-loader';
 import { buildEnvironment } from './environment.js?v=minimal-loader';
 import { initInteractions } from './interactions.js?v=minimal-loader';
+import { initPlaqueFocus } from './plaqueFocus.js';
 import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=minimal-loader';
 
 const INTRO_TIMING = {
@@ -47,6 +48,7 @@ async function main() {
   let carouselCtrl = { update() {}, dispose() {} };
   let environmentCtrl = { update() {} };
   let scrollCtrl = null;
+  let focusCtrl = null;
   let buildToken = 0;
   let lastProjectY = 0;
   let minScrollY = 0;
@@ -89,6 +91,7 @@ async function main() {
     interactionCtrl?.dispose();
     carouselCtrl.dispose();
     environmentCtrl.dispose?.();
+    focusCtrl?.dispose();
     if (root) {
       scene.remove(root);
       disposeObjectGeometries(root);
@@ -97,7 +100,8 @@ async function main() {
     root = nextRoot;
     carouselCtrl = nextCarouselCtrl;
     environmentCtrl = nextEnvironmentCtrl;
-    interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons, nextCarouselCtrl.carousels);
+    focusCtrl = initPlaqueFocus(scene, camera, renderer, plaqueObjects);
+    interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons, nextCarouselCtrl.carousels, focusCtrl);
     
     // Verification hooks
     window.plaqueObjects = plaqueObjects;
@@ -199,6 +203,7 @@ async function main() {
     if (scrollCtrl) scrollCtrl.update(dt);
     environmentCtrl.update(camera.position.y, dt);
     carouselCtrl.update(dt, camera.position.y);
+    if (focusCtrl) focusCtrl.update(dt);
 
     // Update letterbox bars transform
     if (letterboxBars) {
