@@ -3,11 +3,10 @@
 // On narrow screens plaques sit directly below the cavity and are too
 // small to read.  Tapping a plaque lifts it toward the camera, centered
 // and scaled up, with a dimmed backdrop.  Scrolling or clicking outside
-// dismisses the focus — the dismiss transition applies a brief CSS blur
-// to the canvas ("scrolling blurs it") as the plaque returns home.
+// closes the focus (the plaque animates back home).
 //
 // Exports:
-//   initPlaqueFocus(scene, camera, renderer, plaqueObjects)
+//   initPlaqueFocus(scene, camera, plaqueObjects)
 //     → { update(dt), focus(plaqueObj), dismiss(reason), isFocused(), dispose() }
 
 import * as THREE from 'three';
@@ -19,13 +18,11 @@ const FOCUS_DISTANCE = 2.0;       // plaque sits this far in front of the camera
 const BACKDROP_DISTANCE = 2.6;    // backdrop behind the plaque, in front of the wall
 const FOCUS_OCCUPANCY = 0.88;     // plaque fills this fraction of the viewport
 const BACKDROP_OPACITY = 0.62;
-const BLUR_PX = 5;
 const EPS = 0.001;
 const STACKED_X_MAX = 0.15;       // |plaque.x| below this ⇒ stacked/mobile layout
 
 let sceneRef = null;
 let cameraRef = null;
-let rendererRef = null;
 let plaques = [];
 let backdrop = null;
 let focused = null;       // { plaque, origPos, origScale, targetPos, targetScale, dismissing }
@@ -73,14 +70,6 @@ function ensureBackdrop() {
   return backdrop;
 }
 
-function clearBlur() {
-  if (rendererRef?.domElement) rendererRef.domElement.style.filter = '';
-}
-
-function applyBlur() {
-  if (rendererRef?.domElement) rendererRef.domElement.style.filter = `blur(${BLUR_PX}px)`;
-}
-
 function resetFocusedPlaque() {
   if (!focused) return;
   const { plaque, origPos, origScale } = focused;
@@ -89,21 +78,31 @@ function resetFocusedPlaque() {
   focused = null;
 }
 
-export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
+export function initPlaqueFocus(scene, camera, plaqueObjects) {
   sceneRef = scene;
   cameraRef = camera;
-  rendererRef = renderer;
   plaques = plaqueObjects || [];
 
   function onScrollInput() {
     if (!focused) return;
     // Cancel the camera scroll so the wall doesn't jump while the
-    // plaque blurs out.  Only arm once per focus session.
+    // plaque closes.  Only arm once per focus session.
     if (!scrollCancelArmed) {
       scrollCancelArmed = true;
       setTargetY(cameraRef.position.y);
     }
-    dismiss('scroll');
+    dismissFocus();
+  }
+
+  // Shared close routine — called by onScrollInput (scroll/touch/drag) and
+  // the public dismiss() method (click-out).  Declared in this scope so the
+  // nested onScrollInput can reach it; object-literal methods are not
+  // identifiers and can't be referenced as bare names from sibling functions.
+  function dismissFocus() {
+    if (!focused || focused.dismissing) return;
+    focused.dismissing = true;
+    focused.targetPos = focused.origPos.clone();
+    focused.targetScale = focused.origScale.clone();
   }
 
   window.addEventListener(SCROLL_INPUT_EVENT, onScrollInput);
@@ -113,6 +112,15 @@ export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
       if (!focused) return;
       const { plaque, targetPos, targetScale, dismissing } = focused;
       const k = 1 - Math.pow(1 - EASING, dt * 60);
+
+      // While focused (not closing), anchor the plaque to the camera's
+      // current Y so auto-snap movements carry it along — it stays
+      // centered and readable instead of drifting off as the camera
+      // moves to a project.  During dismiss we leave targetPos at the
+      // plaque's home so it returns to the wall.
+      if (!dismissing) {
+        targetPos.y = cameraRef.position.y;
+      }
 
       plaque.mesh.position.lerp(targetPos, k);
       plaque.mesh.scale.lerp(targetScale, k);
@@ -132,9 +140,7 @@ export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
         Math.abs(plaque.mesh.scale.x - targetScale.x) < EPS;
 
       if (dismissing) {
-        applyBlur();
         if (settled && (!bp || bp.material.opacity < 0.01)) {
-          clearBlur();
           resetFocusedPlaque();
           if (bp) bp.visible = false;
           scrollCancelArmed = false;
@@ -148,7 +154,6 @@ export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
 
       // Switching focus: snap the previous one home instantly.
       if (focused) {
-        clearBlur();
         resetFocusedPlaque();
       }
 
@@ -176,10 +181,7 @@ export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
     },
 
     dismiss() {
-      if (!focused || focused.dismissing) return;
-      focused.dismissing = true;
-      focused.targetPos = focused.origPos.clone();
-      focused.targetScale = focused.origScale.clone();
+      dismissFocus();
     },
 
     isFocused() {
@@ -192,7 +194,6 @@ export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
 
     dispose() {
       window.removeEventListener(SCROLL_INPUT_EVENT, onScrollInput);
-      clearBlur();
       resetFocusedPlaque();
       if (backdrop) {
         sceneRef?.remove(backdrop);
@@ -204,7 +205,6 @@ export function initPlaqueFocus(scene, camera, renderer, plaqueObjects) {
       scrollCancelArmed = false;
       sceneRef = null;
       cameraRef = null;
-      rendererRef = null;
       plaques = [];
     },
   };

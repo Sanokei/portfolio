@@ -10,10 +10,10 @@ import { projects, categoryOrder } from './projects.js?v=minimal-loader';
 import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
 import { buildCarousels } from './carousel.js?v=minimal-loader';
 import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=minimal-loader';
-import { buildEnvironment } from './environment.js?v=minimal-loader';
+import { buildEnvironment } from './environment.js?v=real-brick-pigeons';
 import { initInteractions } from './interactions.js?v=minimal-loader';
 import { initPlaqueFocus } from './plaqueFocus.js';
-import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=minimal-loader';
+import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=taxi-ending4';
 
 const INTRO_TIMING = {
   loadingFadeMs: 750,
@@ -66,7 +66,7 @@ async function main() {
 
     buildWallDecals(nextRoot, cavityData);
     const nextCarouselCtrl = buildCarousels(nextRoot, cavityData, camera, renderer);
-    const nextEnvironmentCtrl = buildEnvironment(nextRoot, projects, categoryOrder, camera);
+    const nextEnvironmentCtrl = buildEnvironment(nextRoot, projects, categoryOrder, camera, renderer);
     const metrics = getLayoutMetrics();
 
     // Header backdrop — a solid plaster panel that fills the viewport
@@ -87,7 +87,7 @@ async function main() {
     root = nextRoot;
     carouselCtrl = nextCarouselCtrl;
     environmentCtrl = nextEnvironmentCtrl;
-    focusCtrl = initPlaqueFocus(scene, camera, renderer, plaqueObjects);
+    focusCtrl = initPlaqueFocus(scene, camera, plaqueObjects);
     interactionCtrl = initInteractions(camera, renderer, plaqueObjects, nextCarouselCtrl.buttons, nextCarouselCtrl.carousels, focusCtrl);
     
     // Verification hooks

@@ -187,7 +187,7 @@ export function getLayoutMetrics() {
     plaqueH,
     headerW,
     headerH,
-    endingWallHeight: Math.max(visibleWallHeight, 4.5 * objectScale),
+    endingWallHeight: visibleWallHeight * 0.92,
   };
 }
 

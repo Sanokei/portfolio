@@ -9,7 +9,7 @@ import {
   WALL_HEIGHT,
   WALL_Y_CENTER,
   WALL_THICKNESS,
-} from './layout.js';
+} from './layout.js?v=taxi-ending4';
 
 const lampMaterial = new THREE.MeshStandardMaterial({
   color: 0x070707,
@@ -720,66 +720,366 @@ function generateMarbleTexture() {
   return texture;
 }
 
-function generateBrickTexture() {
+const BRICK_WORLD_TEXTURE_SCALE = 0.79;
+let endingBrickTexture = null;
+
+function generateBrickTexture(renderer) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
+  canvas.width = 1024;
   canvas.height = 512;
+
   const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(canvas.width, canvas.height);
+  const data = img.data;
+  const width = canvas.width;
+  const height = canvas.height;
 
-  ctx.fillStyle = '#b25d48';
-  ctx.fillRect(0, 0, 512, 512);
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
 
-  const rows = 8;
-  const rowHeight = 512 / rows;
+  function fract(value) {
+    return value - Math.floor(value);
+  }
 
-  for (let r = 0; r < rows; r++) {
-    const y = r * rowHeight;
+  function smoothstep(edge0, edge1, value) {
+    const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
 
-    ctx.fillStyle = `rgba(${Math.floor(Math.random() * 30 - 15)}, 0, 0, ${0.05 + Math.random() * 0.15})`;
-    ctx.fillRect(0, y, 512, rowHeight);
+  function hash3(x, y, z) {
+    return fract(123 * Math.sin((x + 1000) * 21.6) * Math.sin((y + 1000) * 43.4) * Math.sin((z + 1000) * 14.5));
+  }
 
-    for (let n = 0; n < 80; n++) {
-      const nx = Math.random() * 512;
-      const ny = y + Math.random() * rowHeight;
-      const nsize = 1 + Math.random() * 1.5;
-      ctx.fillStyle = Math.random() < 0.5 ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)';
-      ctx.fillRect(nx, ny, nsize, nsize);
+  function sdBox(px, py, bx, by) {
+    const qx = Math.abs(px) - bx;
+    const qy = Math.abs(py) - by;
+    const g = Math.max(qx, qy);
+    if (g < 0) return g;
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0));
+  }
+
+  function fields(u, v) {
+    const cols = 7;
+    const rows = 8;
+    const x = u * cols;
+    const y = v * rows;
+    const rowID = Math.floor(y);
+    const shiftedX = x + (Math.abs(rowID) % 2) * 0.5;
+    const colID = Math.floor(shiftedX);
+    let cx = fract(shiftedX) - 0.5;
+    let cy = fract(y) - 0.5;
+
+    const h1 = Math.sin(colID * 123.0 + rowID * 924.0);
+    const h2 = Math.sin(colID * 462.0 + rowID * 214.9);
+    const h3 = Math.sin(colID * 754.0 + rowID * 534.2);
+    const h4 = Math.sin(colID * 445.0 + rowID * 736.6);
+
+    cx += 0.012 * h1 * cy + 0.008 * Math.sin(cy * 8 + h2 * 3);
+    cy += 0.008 * h2 * cx;
+
+    const bx = 0.430 + 0.024 * Math.abs(h1);
+    const by = 0.382 + 0.017 * h3;
+    let d = sdBox(cx, cy, bx, by) - 0.038;
+    d += (hash3(Math.floor(u * 360), Math.floor(v * 360), h4 * 6) - 0.5) * 0.014;
+    const body = smoothstep(0.014, -0.014, d);
+    const cap = smoothstep(0, 0.086, -d);
+    const pitting = hash3(Math.floor(u * 280), Math.floor(v * 280), h4 * 9);
+    const heightValue = body * (0.22 + 0.78 * cap + 0.038 * (pitting - 0.5));
+
+    return {
+      body,
+      height: clamp(heightValue, 0, 1),
+      id: h4,
+      dist: d,
+      cx,
+      cy,
+      rowID,
+      colID,
+      tone: hash3(colID, rowID, 1.7),
+      soot: hash3(colID, rowID, 4.1),
+    };
+  }
+
+  function shade(u, v) {
+    const f = fields(u, v);
+    const epsU = 2 / width;
+    const epsV = 2 / height;
+    const hx = fields(u + epsU, v).height;
+    const hy = fields(u, v + epsV).height;
+
+    let nx = (f.height - hx) * 5.7;
+    let ny = (f.height - hy) * 5.7;
+    let nz = 1.0;
+    const invLen = 1 / Math.hypot(nx, ny, nz);
+    nx *= invLen;
+    ny *= invLen;
+    nz *= invLen;
+
+    const id = f.id;
+    const warm = f.tone;
+    const soot = f.soot;
+    // Realistic clay brick base tones (terracotta/red-brown range)
+    const brickHue = (hash3(f.colID + 17.3, f.rowID + 9.1, id) - 0.5) * 0.11;
+    let br = 0.62 + 0.11 * warm + brickHue * 0.8 - 0.07 * soot;
+    let bg = 0.27 + 0.09 * warm - brickHue * 0.55 - 0.035 * soot;
+    let bb = 0.19 + 0.04 * warm - brickHue * 0.8 - 0.02 * soot;
+    // Subtle per-brick brightness & hue micro-variation
+    const brickVar = (hash3(f.colID * 3.1, f.rowID * 5.7, id * 2.3) - 0.5) * 0.18;
+    br = Math.max(0.32, br + brickVar * 0.6);
+    bg = Math.max(0.14, bg + brickVar * 0.35);
+    bb = Math.max(0.09, bb + brickVar * 0.18);
+    br *= 1 + 0.09 * Math.sin(Math.PI * id);
+    bg *= 1 + 0.07 * Math.sin(Math.PI * id + 2);
+    bb *= 1 + 0.05 * Math.sin(Math.PI * id + 4);
+
+    const speckle = hash3(Math.floor(u * 720), Math.floor(v * 720), id * 12);
+    const pore = hash3(Math.floor(u * 1260), Math.floor(v * 1260), id * 15);
+    const grain = hash3(Math.floor(u * 210), Math.floor(v * 210), id * 8);
+    const mottle = hash3(Math.floor(u * 32), Math.floor(v * 48), id * 4);
+    const brickMottle = 0.82 + 0.11 * speckle + 0.09 * pore + 0.10 * grain + 0.10 * mottle;
+    br *= brickMottle;
+    bg *= brickMottle;
+    bb *= brickMottle;
+
+    if (f.body > 0.5 && hash3(f.colID, f.rowID, 8.3) > 0.62) {
+      const crackAngle = (hash3(f.colID, f.rowID, 9.2) - 0.5) * 1.3;
+      const crackOffset = (hash3(f.colID, f.rowID, 10.4) - 0.5) * 0.44;
+      const crackAxis = Math.cos(crackAngle) * (f.cx - crackOffset) + Math.sin(crackAngle) * f.cy;
+      const crackLength = smoothstep(0.34, 0.08, Math.abs(f.cy));
+      const crack = smoothstep(0.010, 0.0, Math.abs(crackAxis)) * crackLength;
+      br *= 1 - 0.42 * crack;
+      bg *= 1 - 0.48 * crack;
+      bb *= 1 - 0.52 * crack;
     }
 
-    // Top highlight (white bevel)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y + 1.5);
-    ctx.lineTo(512, y + 1.5);
-    ctx.stroke();
+    const mortarNoise = 0.78 + 0.22 * hash3(Math.floor(u * 170), Math.floor(v * 170), 3.1);
+    // Pale sandy/gritty mortar
+    const mr = 0.62 * mortarNoise;
+    const mg = 0.57 * mortarNoise;
+    const mb = 0.51 * mortarNoise;
 
-    // Bottom shadow (black bevel)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y + rowHeight - 1.5);
-    ctx.lineTo(512, y + rowHeight - 1.5);
-    ctx.stroke();
+    let r = mr * (1 - f.body) + br * f.body;
+    let g = mg * (1 - f.body) + bg * f.body;
+    let b = mb * (1 - f.body) + bb * f.body;
+
+    // Subtle vertical rain-wash / soot streaks for realism
+    const wash = smoothstep(0.4, 0.95, Math.abs(Math.sin(u * 9.7 + v * 2.3) * 0.5 + (hash3(Math.floor(u*11), Math.floor(v*27), 2.0)-0.5))) * 0.12;
+    r *= (1.0 - wash * (1.0 - f.body) * 0.6);
+    g *= (1.0 - wash * (1.0 - f.body) * 0.55);
+    b *= (1.0 - wash * (1.0 - f.body) * 0.35);
+
+    const lx = 0.28;
+    const ly = 0.52;
+    const lz = 0.81;
+    const lightInv = 1 / Math.hypot(lx, ly, lz);
+    const dif = Math.max(0, nx * lx * lightInv + ny * ly * lightInv + nz * lz * lightInv);
+    const edge = smoothstep(0, 0.105, -f.dist);
+    const edgeAO = 0.68 * (1 - edge) + edge;
+    const mortarAO = 0.91 * (1 - f.body) + f.body;
+    const light = (0.42 + 1.08 * dif) * edgeAO * mortarAO;
+
+    const spec = Math.pow(Math.max(0, nz), 7) * f.body * Math.max(0, dif - 0.18) * 0.09;
+    r = r * light + spec * 0.28 + r * 0.14 * (0.32 + 0.68 * f.height);
+    g = g * light + spec * 0.22 + g * 0.15 * (0.32 + 0.68 * f.height);
+    b = b * light + spec * 0.16 + b * 0.17 * (0.32 + 0.68 * f.height);
+
+    r = r * 1.65 / (1.03 + r);
+    g = g * 1.65 / (1.03 + g);
+    b = b * 1.65 / (1.03 + b);
+
+    return [clamp(r, 0, 1), clamp(g, 0, 1), clamp(b, 0, 1)];
   }
 
-  // Draw horizontal mortar lines
-  ctx.strokeStyle = '#dfdcd5';
-  ctx.lineWidth = 4;
-  for (let r = 0; r <= rows; r++) {
-    ctx.beginPath();
-    ctx.moveTo(0, r * rowHeight);
-    ctx.lineTo(512, r * rowHeight);
-    ctx.stroke();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const u = x / width;
+      const v = y / height;
+      const color = shade(u, v);
+      const idx = (y * width + x) * 4;
+      data[idx] = Math.round(color[0] * 255);
+      data[idx + 1] = Math.round(color[1] * 255);
+      data[idx + 2] = Math.round(color[2] * 255);
+      data[idx + 3] = 255;
+    }
   }
+
+  ctx.putImageData(img, 0, 0);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(0.6, 0.6);
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
   texture.colorSpace = THREE.SRGBColorSpace;
+  if (renderer?.capabilities?.getMaxAnisotropy) {
+    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  }
   return texture;
 }
+
+function makeBrickWallMaterial(renderer) {
+  if (!endingBrickTexture) endingBrickTexture = generateBrickTexture(renderer);
+  const material = new THREE.MeshStandardMaterial({
+    map: endingBrickTexture,
+    roughness: 0.9,
+    metalness: 0.01,
+  });
+
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = [
+      'varying vec3 vBrickWorldPos;',
+      'varying vec3 vBrickWorldNormal;',
+      shader.vertexShader,
+    ].join('\n');
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `
+      #include <begin_vertex>
+      vBrickWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      vBrickWorldNormal = normalize(mat3(modelMatrix) * normal);
+      `
+    );
+    shader.fragmentShader = `
+      varying vec3 vBrickWorldPos;
+      varying vec3 vBrickWorldNormal;
+
+      const float BRICK_RELIEF_SCALE = ${BRICK_WORLD_TEXTURE_SCALE.toFixed(3)};
+
+      float brickHash(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+
+      float brickBox(vec2 p, vec2 b) {
+        vec2 q = abs(p) - b;
+        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+      }
+
+      float brickHeightField(vec2 uv, out float body, out float edgeDist) {
+        vec2 tile = uv * vec2(7.0, 8.0);
+        float row = floor(tile.y);
+        tile.x += mod(abs(row), 2.0) * 0.5;
+        vec2 cell = floor(tile);
+        vec2 p = fract(tile) - 0.5;
+
+        float id = brickHash(cell + 2.17);
+        p.x += (id - 0.5) * 0.038 * p.y;
+        p.y += (brickHash(cell + 8.71) - 0.5) * 0.016 * p.x;
+
+        vec2 halfSize = vec2(
+          0.415 + 0.038 * brickHash(cell + 4.33),
+          0.362 + 0.027 * brickHash(cell + 1.91)
+        );
+        edgeDist = brickBox(p, halfSize) - 0.042;
+        edgeDist += (brickHash(floor(uv * 410.0) + cell * 0.09) - 0.5) * 0.016;
+
+        body = smoothstep(0.021, -0.021, edgeDist);
+        float crown = smoothstep(0.0, 0.16, -edgeDist);
+        float grain = brickHash(floor(uv * 980.0) + cell * 0.11);
+        float pit = step(0.86, grain) * body * smoothstep(0.09, 0.0, abs(edgeDist));
+        float chips = step(0.72, brickHash(floor(uv * 24.0) + cell * 0.37)) *
+          smoothstep(-0.006, -0.082, edgeDist) * 0.11;
+        // Extra chips & worn rounding for realism
+        float wear = brickHash(cell + 11.3) * smoothstep(0.03, -0.05, edgeDist);
+        edgeDist += wear * 0.018;
+
+        return clamp(body * (0.11 + 0.89 * crown) - pit * 0.18 - chips, 0.0, 1.0);
+      }
+
+      vec2 brickUvFromWorld(vec3 n, vec3 worldPos) {
+        vec3 an = abs(normalize(n));
+        if (an.z > an.x && an.z > an.y) return worldPos.xy;
+        if (an.x > an.y) return vec2(worldPos.z, worldPos.y);
+        return worldPos.xz;
+      }
+
+      vec2 brickViewShiftFromWorld(vec3 n, vec3 viewDir) {
+        vec3 an = abs(normalize(n));
+        if (an.z > an.x && an.z > an.y) return vec2(viewDir.x, viewDir.y) * sign(n.z);
+        if (an.x > an.y) return vec2(viewDir.z, viewDir.y) * sign(n.x);
+        return vec2(viewDir.x, viewDir.z) * sign(n.y);
+      }
+
+      vec3 brickNormalFromLocal(vec3 n, vec3 localNormal) {
+        vec3 an = abs(normalize(n));
+        if (an.z > an.x && an.z > an.y) {
+          return normalize(vec3(localNormal.x, localNormal.y, localNormal.z * sign(n.z)));
+        }
+        if (an.x > an.y) {
+          return normalize(vec3(localNormal.z * sign(n.x), localNormal.y, localNormal.x));
+        }
+        return normalize(vec3(localNormal.x, localNormal.z * sign(n.y), localNormal.y));
+      }
+    ` + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `
+      #ifdef USE_MAP
+      {
+        vec3 brickWorldNormal = normalize(vBrickWorldNormal);
+        vec3 brickViewDir = normalize(cameraPosition - vBrickWorldPos);
+        vec2 brickUv = brickUvFromWorld(brickWorldNormal, vBrickWorldPos) * BRICK_RELIEF_SCALE;
+        vec2 brickViewShift = brickViewShiftFromWorld(brickWorldNormal, brickViewDir);
+        float brickBody;
+        float brickEdge;
+        float brickH = brickHeightField(brickUv, brickBody, brickEdge);
+        float brickGrazing = pow(1.0 - abs(dot(brickWorldNormal, brickViewDir)), 1.65);
+        vec2 brickParallaxUv = brickUv + brickViewShift * (brickH - 0.46) * 0.105 * brickGrazing;
+        vec4 texelColor = texture2D(map, brickParallaxUv);
+        float brickRecess = 1.0 - smoothstep(-0.021, 0.058, brickEdge);
+        texelColor.rgb *= 0.73 + 0.27 * brickBody;
+        texelColor.rgb *= 0.76 + 0.24 * brickH;
+        texelColor.rgb *= 1.0 - brickRecess * 0.26;
+        diffuseColor *= texelColor;
+      }
+      #endif
+      `
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `
+      #include <normal_fragment_maps>
+      {
+      vec3 brickWorldNormal = normalize(vBrickWorldNormal);
+      vec2 brickUv = brickUvFromWorld(brickWorldNormal, vBrickWorldPos) * BRICK_RELIEF_SCALE;
+      vec3 brickViewDir = normalize(cameraPosition - vBrickWorldPos);
+      vec2 brickViewShift = brickViewShiftFromWorld(brickWorldNormal, brickViewDir);
+      float brickBodyCenter;
+      float brickEdgeCenter;
+      float brickCenterH = brickHeightField(brickUv, brickBodyCenter, brickEdgeCenter);
+      float brickGrazing = pow(1.0 - abs(dot(brickWorldNormal, brickViewDir)), 1.65);
+      vec2 brickParallaxUv = brickUv + brickViewShift * (brickCenterH - 0.46) * 0.105 * brickGrazing;
+
+      float brickBodyX1;
+      float brickEdgeX1;
+      float brickBodyX2;
+      float brickEdgeX2;
+      float brickBodyY1;
+      float brickEdgeY1;
+      float brickBodyY2;
+      float brickEdgeY2;
+      const float brickEps = 0.0024;
+      float brickHX1 = brickHeightField(brickParallaxUv + vec2(brickEps, 0.0), brickBodyX1, brickEdgeX1);
+      float brickHX2 = brickHeightField(brickParallaxUv - vec2(brickEps, 0.0), brickBodyX2, brickEdgeX2);
+      float brickHY1 = brickHeightField(brickParallaxUv + vec2(0.0, brickEps), brickBodyY1, brickEdgeY1);
+      float brickHY2 = brickHeightField(brickParallaxUv - vec2(0.0, brickEps), brickBodyY2, brickEdgeY2);
+      vec3 brickLocalNormal = normalize(vec3(
+        (brickHX2 - brickHX1) * 11.0,
+        (brickHY2 - brickHY1) * 11.0,
+        1.0
+      ));
+      vec3 brickPerturbedWorld = brickNormalFromLocal(brickWorldNormal, brickLocalNormal);
+      normal = normalize(mix(normal, normalize(mat3(viewMatrix) * brickPerturbedWorld), 0.85));
+      }
+      `
+    );
+  };
+
+  return material;
+}
+
 
 function generateDoorWoodTexture() {
   const canvas = document.createElement('canvas');
@@ -901,6 +1201,12 @@ vec2 Rot2(vec2 p, float a) {
   return mat2(c, s, -s, c) * p;
 }
 
+float Hash31(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
 // Distance estimators
 float sdSphere(vec3 p, float r) {
   return length(p) - r;
@@ -919,78 +1225,85 @@ float sMin(float a, float b, float k) {
 
 // Distance map
 float Map(vec3 p) {
-  // 1. Flight posture tilt
-  p.xy = Rot2(p.xy, -0.15 * uIsFlying);
+  // 1. Stronger flight posture tilt + slight nose down in level flight
+  float bodyTilt = -0.22 * uIsFlying + 0.04 * (1.0 - uIsFlying);
+  p.xy = Rot2(p.xy, bodyTilt);
 
   // 2. Peck & Coo animations for the Head & Neck
-  vec3 headOffset = vec3(0.08, -0.12, 0.0) * uPeckProgress 
-                  + vec3(-0.02, -0.04, 0.0) * uCooProgress;
+  vec3 headOffset = vec3(0.09, -0.13, 0.0) * uPeckProgress 
+                  + vec3(-0.01, -0.035, 0.0) * uCooProgress;
+  // Pull head forward a bit when flying (alert)
+  headOffset.x -= 0.035 * uIsFlying;
   
-  vec3 headPos = vec3(0.10, 0.44, 0.0) + headOffset;
-  vec3 neckBase = vec3(0.02, 0.30, 0.0);
-  vec3 neckTop = headPos - vec3(0.02, 0.05, 0.0);
+  vec3 headPos = vec3(0.095, 0.45, 0.0) + headOffset;
+  vec3 neckBase = vec3(0.01, 0.29, 0.0);
+  vec3 neckTop = headPos - vec3(0.015, 0.045, 0.0);
   
-  float neckR1 = mix(0.07, 0.12, uCooProgress); // base (crop)
-  float neckR2 = 0.05;                          // top
+  float neckR1 = mix(0.065, 0.115, uCooProgress);
+  float neckR2 = 0.048;
 
-  vec3 beakStart = headPos + vec3(0.06, -0.01, 0.0);
-  vec3 beakEnd = headPos + vec3(0.12, mix(-0.02, -0.08, uPeckProgress), 0.0);
+  vec3 beakStart = headPos + vec3(0.055, -0.005, 0.0);
+  vec3 beakEnd = headPos + vec3(0.115, mix(-0.015, -0.07, uPeckProgress), 0.0);
 
-  // 3. Body Shape
-  float dBody = sdSphere(p - vec3(-0.02, 0.28, 0.0), 0.14);
-  float dRear = sdSphere(p - vec3(-0.12, 0.24, 0.0), 0.11);
-  float dPigeonBody = sMin(dBody, dRear, 0.08);
+  // 3. Body Shape - rounder chest, fuller
+  float dBody = sdSphere(p - vec3(-0.005, 0.285, 0.0), 0.155);
+  float dRear = sdSphere(p - vec3(-0.125, 0.245, 0.0), 0.115);
+  float dPigeonBody = sMin(dBody, dRear, 0.09);
 
-  // 4. Head and Neck
+  // 4. Head and Neck - slightly smaller head
   float dNeck = sdSegment(p, neckBase, neckTop, neckR1, neckR2);
-  float dHead = sdSphere(p - headPos, 0.068);
-  float dBeak = sdSegment(p, beakStart, beakEnd, 0.016, 0.005);
+  float dHead = sdSphere(p - headPos, 0.062);
+  float dBeak = sdSegment(p, beakStart, beakEnd, 0.015, 0.0045);
   
-  // Eyes
-  vec3 eyePosL = headPos + vec3(0.03, 0.02, 0.042);
-  vec3 eyePosR = headPos + vec3(0.03, 0.02, -0.042);
-  float dEyes = min(sdSphere(p - eyePosL, 0.012), sdSphere(p - eyePosR, 0.012));
+  // Eyes - slightly inset
+  vec3 eyePosL = headPos + vec3(0.028, 0.018, 0.038);
+  vec3 eyePosR = headPos + vec3(0.028, 0.018, -0.038);
+  float dEyes = min(sdSphere(p - eyePosL, 0.011), sdSphere(p - eyePosR, 0.011));
 
-  float d = sMin(dPigeonBody, dNeck, 0.06);
-  d = sMin(d, dHead, 0.04);
+  float d = sMin(dPigeonBody, dNeck, 0.055);
+  d = sMin(d, dHead, 0.038);
   d = min(d, dEyes);
-  d = sMin(d, dBeak, 0.01);
+  d = sMin(d, dBeak, 0.009);
 
-  // 5. Wings
-  vec3 pivotL = vec3(-0.04, 0.28, 0.09);
-  vec3 pivotR = vec3(-0.04, 0.28, -0.09);
+  // 5. Wings (SDF stubs) - longer & broader when flying
+  vec3 pivotL = vec3(-0.045, 0.275, 0.095);
+  vec3 pivotR = vec3(-0.045, 0.275, -0.095);
 
   vec3 pL = p - pivotL;
-  float flapAngle = mix(0.0, sin(uFlightProgress) * 0.9, uIsFlying);
-  flapAngle += (1.0 - uIsFlying) * (sin(uTime * 3.0) * 0.03 + uCooProgress * 0.08);
-  
+  float flapAngle = mix(0.0, sin(uFlightProgress) * 1.05, uIsFlying);
+  flapAngle += (1.0 - uIsFlying) * (sin(uTime * 2.8) * 0.025 + uCooProgress * 0.06);
+  float wingLen = mix(0.155, 0.205, uIsFlying);
   pL.yz = Rot2(pL.yz, flapAngle);
-  float dWingL = sdSegment(pL, vec3(0.0), vec3(-0.16, -0.08, 0.03), 0.045, 0.02);
+  float dWingL = sdSegment(pL, vec3(0.0), vec3(-wingLen, -0.06, 0.022), 0.048, 0.018);
 
   vec3 pR = p - pivotR;
   pR.yz = Rot2(pR.yz, -flapAngle);
-  float dWingR = sdSegment(pR, vec3(0.0), vec3(-0.16, -0.08, -0.03), 0.045, 0.02);
+  float dWingR = sdSegment(pR, vec3(0.0), vec3(-wingLen, -0.06, -0.022), 0.048, 0.018);
 
-  d = sMin(d, min(dWingL, dWingR), 0.03);
+  d = sMin(d, min(dWingL, dWingR), 0.028);
 
-  // 6. Tail
-  vec3 tailEnd = vec3(-0.28, mix(0.18, 0.12, uCooProgress), 0.0);
-  float dTail = sdSegment(p, vec3(-0.12, 0.22, 0.0), tailEnd, 0.035, mix(0.045, 0.065, uIsFlying));
-  d = sMin(d, dTail, 0.03);
+  // 6. Tail - fan when flying
+  float tailFan = mix(0.0, 0.6, uIsFlying);
+  vec3 tailEnd = vec3(-0.29, mix(0.175, 0.095, uCooProgress) - tailFan * 0.03, 0.0);
+  float tailR2 = mix(0.038, 0.065, uIsFlying);
+  float dTail = sdSegment(p, vec3(-0.115, 0.225, 0.0), tailEnd, 0.032, tailR2);
+  d = sMin(d, dTail, 0.028);
 
-  // 7. Legs & Feet
-  vec3 legStartL = vec3(-0.03, 0.18, 0.04);
-  vec3 legEndL = mix(vec3(-0.03, 0.02, 0.04), vec3(-0.12, 0.18, 0.03), uIsFlying);
-  float dLegL = sdSegment(p, legStartL, legEndL, 0.012, 0.01);
-  float dFootL = sdSegment(p, legEndL, legEndL + mix(vec3(0.05, 0.0, 0.0), vec3(0.0), uIsFlying), 0.008, 0.008);
+  // 7. Legs & Feet - tuck tight when flying
+  vec3 legStartL = vec3(-0.025, 0.175, 0.04);
+  vec3 legEndL = mix(vec3(-0.025, 0.015, 0.038), vec3(-0.135, 0.165, 0.02), uIsFlying);
+  float dLegL = sdSegment(p, legStartL, legEndL, 0.011, 0.009);
+  vec3 footDirL = mix(vec3(0.055, -0.01, 0.0), vec3(0.0), uIsFlying);
+  float dFootL = sdSegment(p, legEndL, legEndL + footDirL, 0.0075, 0.007);
 
-  vec3 legStartR = vec3(-0.03, 0.18, -0.04);
-  vec3 legEndR = mix(vec3(-0.03, 0.02, -0.04), vec3(-0.12, 0.18, -0.03), uIsFlying);
-  float dLegR = sdSegment(p, legStartR, legEndR, 0.012, 0.01);
-  float dFootR = sdSegment(p, legEndR, legEndR + mix(vec3(0.05, 0.0, 0.0), vec3(0.0), uIsFlying), 0.008, 0.008);
+  vec3 legStartR = vec3(-0.025, 0.175, -0.04);
+  vec3 legEndR = mix(vec3(-0.025, 0.015, -0.038), vec3(-0.135, 0.165, -0.02), uIsFlying);
+  float dLegR = sdSegment(p, legStartR, legEndR, 0.011, 0.009);
+  vec3 footDirR = mix(vec3(0.055, -0.01, 0.0), vec3(0.0), uIsFlying);
+  float dFootR = sdSegment(p, legEndR, legEndR + footDirR, 0.0075, 0.007);
 
   float dLegs = min(min(dLegL, dFootL), min(dLegR, dFootR));
-  d = sMin(d, dLegs, 0.015);
+  d = sMin(d, dLegs, 0.013);
 
   return d;
 }
@@ -1007,69 +1320,75 @@ vec3 GetNormal(vec3 p) {
 vec3 Colour(vec3 p, vec3 nor, out float spec) {
   spec = 0.0;
 
-  p.xy = Rot2(p.xy, -0.15 * uIsFlying);
+  p.xy = Rot2(p.xy, -0.22 * uIsFlying + 0.04 * (1.0 - uIsFlying));
 
-  vec3 headOffset = vec3(0.08, -0.12, 0.0) * uPeckProgress 
-                  + vec3(-0.02, -0.04, 0.0) * uCooProgress;
-  
-  vec3 headPos = vec3(0.10, 0.44, 0.0) + headOffset;
-  vec3 neckBase = vec3(0.02, 0.30, 0.0);
-  vec3 neckTop = headPos - vec3(0.02, 0.05, 0.0);
-  float neckR1 = mix(0.07, 0.12, uCooProgress);
-  float neckR2 = 0.05;
+  vec3 headOffset = vec3(0.09, -0.13, 0.0) * uPeckProgress 
+                  + vec3(-0.01, -0.035, 0.0) * uCooProgress;
+  headOffset.x -= 0.035 * uIsFlying;
 
-  vec3 beakStart = headPos + vec3(0.06, -0.01, 0.0);
-  vec3 beakEnd = headPos + vec3(0.12, mix(-0.02, -0.08, uPeckProgress), 0.0);
+  vec3 headPos = vec3(0.095, 0.45, 0.0) + headOffset;
+  vec3 neckBase = vec3(0.01, 0.29, 0.0);
+  vec3 neckTop = headPos - vec3(0.015, 0.045, 0.0);
+  float neckR1 = mix(0.065, 0.115, uCooProgress);
+  float neckR2 = 0.048;
 
-  vec3 pivotL = vec3(-0.04, 0.28, 0.09);
-  vec3 pivotR = vec3(-0.04, 0.28, -0.09);
+  vec3 beakStart = headPos + vec3(0.055, -0.005, 0.0);
+  vec3 beakEnd = headPos + vec3(0.115, mix(-0.015, -0.07, uPeckProgress), 0.0);
 
-  float flapAngle = mix(0.0, sin(uFlightProgress) * 0.9, uIsFlying);
-  flapAngle += (1.0 - uIsFlying) * (sin(uTime * 3.0) * 0.03 + uCooProgress * 0.08);
+  vec3 pivotL = vec3(-0.045, 0.275, 0.095);
+  vec3 pivotR = vec3(-0.045, 0.275, -0.095);
+
+  float flapAngle = mix(0.0, sin(uFlightProgress) * 1.05, uIsFlying);
+  flapAngle += (1.0 - uIsFlying) * (sin(uTime * 2.8) * 0.025 + uCooProgress * 0.06);
 
   vec3 pL = p - pivotL;
   pL.yz = Rot2(pL.yz, flapAngle);
   vec3 pR = p - pivotR;
   pR.yz = Rot2(pR.yz, -flapAngle);
 
-  // Compute distances to components
-  float dBody = sMin(sdSphere(p - vec3(-0.02, 0.28, 0.0), 0.14), sdSphere(p - vec3(-0.12, 0.24, 0.0), 0.11), 0.08);
+  // Compute distances (must match Map)
+  float dBody = sMin(sdSphere(p - vec3(-0.005, 0.285, 0.0), 0.155), sdSphere(p - vec3(-0.125, 0.245, 0.0), 0.115), 0.09);
   float dNeck = sdSegment(p, neckBase, neckTop, neckR1, neckR2);
-  float dHead = sdSphere(p - headPos, 0.068);
-  float dBeak = sdSegment(p, beakStart, beakEnd, 0.016, 0.005);
+  float dHead = sdSphere(p - headPos, 0.062);
+  float dBeak = sdSegment(p, beakStart, beakEnd, 0.015, 0.0045);
   
-  vec3 eyePosL = headPos + vec3(0.03, 0.02, 0.042);
-  vec3 eyePosR = headPos + vec3(0.03, 0.02, -0.042);
-  float dEyes = min(sdSphere(p - eyePosL, 0.012), sdSphere(p - eyePosR, 0.012));
+  vec3 eyePosL = headPos + vec3(0.028, 0.018, 0.038);
+  vec3 eyePosR = headPos + vec3(0.028, 0.018, -0.038);
+  float dEyes = min(sdSphere(p - eyePosL, 0.011), sdSphere(p - eyePosR, 0.011));
 
-  float dWingL = sdSegment(pL, vec3(0.0), vec3(-0.16, -0.08, 0.03), 0.045, 0.02);
-  float dWingR = sdSegment(pR, vec3(0.0), vec3(-0.16, -0.08, -0.03), 0.045, 0.02);
+  float wingLenC = mix(0.155, 0.205, uIsFlying);
+  float dWingL = sdSegment(pL, vec3(0.0), vec3(-wingLenC, -0.06, 0.022), 0.048, 0.018);
+  float dWingR = sdSegment(pR, vec3(0.0), vec3(-wingLenC, -0.06, -0.022), 0.048, 0.018);
   float dWings = min(dWingL, dWingR);
 
-  vec3 tailEnd = vec3(-0.28, mix(0.18, 0.12, uCooProgress), 0.0);
-  float dTail = sdSegment(p, vec3(-0.12, 0.22, 0.0), tailEnd, 0.035, mix(0.045, 0.065, uIsFlying));
+  float tailFanC = mix(0.0, 0.6, uIsFlying);
+  vec3 tailEnd = vec3(-0.29, mix(0.175, 0.095, uCooProgress) - tailFanC * 0.03, 0.0);
+  float tailR2C = mix(0.038, 0.065, uIsFlying);
+  float dTail = sdSegment(p, vec3(-0.115, 0.225, 0.0), tailEnd, 0.032, tailR2C);
 
-  vec3 legStartL = vec3(-0.03, 0.18, 0.04);
-  vec3 legEndL = mix(vec3(-0.03, 0.02, 0.04), vec3(-0.12, 0.18, 0.03), uIsFlying);
-  float dLegL = sdSegment(p, legStartL, legEndL, 0.012, 0.01);
-  float dFootL = sdSegment(p, legEndL, legEndL + mix(vec3(0.05, 0.0, 0.0), vec3(0.0), uIsFlying), 0.008, 0.008);
+  vec3 legStartL = vec3(-0.025, 0.175, 0.04);
+  vec3 legEndL = mix(vec3(-0.025, 0.015, 0.038), vec3(-0.135, 0.165, 0.02), uIsFlying);
+  float dLegL = sdSegment(p, legStartL, legEndL, 0.011, 0.009);
+  vec3 footDirL = mix(vec3(0.055, -0.01, 0.0), vec3(0.0), uIsFlying);
+  float dFootL = sdSegment(p, legEndL, legEndL + footDirL, 0.0075, 0.007);
 
-  vec3 legStartR = vec3(-0.03, 0.18, -0.04);
-  vec3 legEndR = mix(vec3(-0.03, 0.02, -0.04), vec3(-0.12, 0.18, -0.03), uIsFlying);
-  float dLegR = sdSegment(p, legStartR, legEndR, 0.012, 0.01);
-  float dFootR = sdSegment(p, legEndR, legEndR + mix(vec3(0.05, 0.0, 0.0), vec3(0.0), uIsFlying), 0.008, 0.008);
+  vec3 legStartR = vec3(-0.025, 0.175, -0.04);
+  vec3 legEndR = mix(vec3(-0.025, 0.015, -0.038), vec3(-0.135, 0.165, -0.02), uIsFlying);
+  float dLegR = sdSegment(p, legStartR, legEndR, 0.011, 0.009);
+  vec3 footDirR = mix(vec3(0.055, -0.01, 0.0), vec3(0.0), uIsFlying);
+  float dFootR = sdSegment(p, legEndR, legEndR + footDirR, 0.0075, 0.007);
   float dLegs = min(min(dLegL, dFootL), min(dLegR, dFootR));
 
-  // Base colors
-  vec3 col_body = vec3(0.48, 0.52, 0.56);
-  vec3 col_neck = vec3(0.32, 0.42, 0.38);
-  vec3 col_head = vec3(0.42, 0.46, 0.50);
-  vec3 col_beak = vec3(0.18, 0.16, 0.15);
-  vec3 col_cere = vec3(0.85, 0.85, 0.82);
-  vec3 col_eyes = vec3(0.9, 0.25, 0.0);
-  vec3 col_wings = vec3(0.44, 0.48, 0.52);
-  vec3 col_tail = vec3(0.32, 0.35, 0.38);
-  vec3 col_legs = vec3(0.85, 0.25, 0.25);
+  // More realistic urban pigeon palette
+  vec3 col_body = vec3(0.47, 0.49, 0.525);
+  vec3 col_neck = vec3(0.22, 0.31, 0.29);
+  vec3 col_head = vec3(0.28, 0.305, 0.34);
+  vec3 col_beak = vec3(0.20, 0.175, 0.155);
+  vec3 col_cere = vec3(0.82, 0.80, 0.76);
+  vec3 col_eyes = vec3(0.88, 0.22, 0.05);
+  vec3 col_wings = vec3(0.52, 0.545, 0.57);
+  vec3 col_tail = vec3(0.195, 0.21, 0.245);
+  vec3 col_legs = vec3(0.82, 0.24, 0.19);
 
   vec3 mat = col_body;
   float minDist = dBody;
@@ -1077,13 +1396,13 @@ vec3 Colour(vec3 p, vec3 nor, out float spec) {
 
   if (dNeck < minDist) {
     minDist = dNeck;
-    float fresnel = pow(1.0 - max(dot(nor, -normalize(p - vLocalCamPos)), 0.0), 2.5);
-    vec3 greenShimmer = vec3(0.0, 0.72, 0.45);
-    vec3 purpleShimmer = vec3(0.55, 0.1, 0.65);
-    float shimmerBlend = sin(p.y * 30.0 + nor.y * 3.0 + uTime) * 0.5 + 0.5;
+    float fresnel = pow(1.0 - max(dot(nor, -normalize(p - vLocalCamPos)), 0.0), 2.65);
+    vec3 greenShimmer = vec3(0.02, 0.68, 0.48);
+    vec3 purpleShimmer = vec3(0.58, 0.12, 0.68);
+    float shimmerBlend = sin(p.y * 34.0 + nor.y * 4.0 + uTime * 1.3) * 0.5 + 0.5;
     vec3 shimmerColor = mix(greenShimmer, purpleShimmer, shimmerBlend);
-    mat = mix(col_neck, shimmerColor, 0.45 + 0.45 * fresnel);
-    spec = 0.2;
+    mat = mix(col_neck, shimmerColor, 0.42 + 0.48 * fresnel);
+    spec = 0.22;
   }
   if (dHead < minDist) {
     minDist = dHead;
@@ -1094,7 +1413,9 @@ vec3 Colour(vec3 p, vec3 nor, out float spec) {
     float wingX = (dWingL < dWingR) ? pL.x : pR.x;
     float stripe1 = smoothstep(0.015, 0.0, abs(wingX + 0.06));
     float stripe2 = smoothstep(0.015, 0.0, abs(wingX + 0.11));
-    mat = mix(col_wings, vec3(0.18, 0.18, 0.20), max(stripe1, stripe2) * 0.85);
+    float featherBands = smoothstep(0.018, 0.0, abs(sin((wingX + 0.19) * 78.0)) * 0.015);
+    mat = mix(col_wings, vec3(0.17, 0.17, 0.19), max(stripe1, stripe2) * 0.9);
+    mat = mix(mat, mat * 0.72, featherBands * 0.24);
     spec = 0.05;
   }
   if (dTail < minDist) {
@@ -1127,12 +1448,24 @@ vec3 Colour(vec3 p, vec3 nor, out float spec) {
     spec = 0.1;
   }
 
+  if (minDist != dEyes && minDist != dBeak && minDist != dLegs) {
+    float featherNoise = Hash31(floor((p + vec3(0.31, 0.0, 0.17)) * 64.0));
+    float fineBars = smoothstep(0.95, 1.0, sin((p.x + p.y * 0.32) * 61.0) * 0.5 + 0.5);
+    mat *= 0.89 + featherNoise * 0.18;
+    mat = mix(mat, mat * 0.76, fineBars * 0.11);
+    // Subtle darker wing leading edge
+    if (dWings < minDist + 0.01) {
+      float lead = smoothstep(0.0, -0.09, pL.x);
+      mat = mix(mat, mat * 0.88, lead * 0.55);
+    }
+  }
+
   return mat;
 }
 
 void main() {
   vec3 ro;
-  if (abs(vLocalCamPos.x) < 0.35 && vLocalCamPos.y > 0.0 && vLocalCamPos.y < 0.7 && abs(vLocalCamPos.z) < 0.35) {
+  if (abs(vLocalCamPos.x) < 0.42 && vLocalCamPos.y > 0.0 && vLocalCamPos.y < 0.78 && abs(vLocalCamPos.z) < 0.42) {
     ro = vLocalCamPos;
   } else {
     ro = vLocalPos;
@@ -1145,7 +1478,7 @@ void main() {
   bool hit = false;
   for (int i = 0; i < 40; i++) {
     p = ro + rd * t;
-    if (abs(p.x) > 0.4 || p.y < -0.05 || p.y > 0.75 || abs(p.z) > 0.4) {
+    if (abs(p.x) > 0.48 || p.y < -0.08 || p.y > 0.82 || abs(p.z) > 0.48) {
       break;
     }
     d = Map(p);
@@ -1202,9 +1535,94 @@ void main() {
 }
 `;
 
+function createPigeonWing(side) {
+  const wingGroup = new THREE.Group();
+  wingGroup.position.set(-0.055, 0.295, side * 0.16);
+  wingGroup.rotation.y = side * 0.09;
+
+  const wingGeo = new THREE.BufferGeometry();
+  // Improved realistic pigeon wing planform (root wide, tapering primaries)
+  wingGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    0.01, 0.01, 0,
+    -0.07, 0.09, 0,
+    -0.31, 0.065, 0,
+    -0.38, 0.005, 0,
+    -0.34, -0.045, 0,
+    -0.19, -0.075, 0,
+    -0.04, -0.055, 0,
+  ]), 3));
+  wingGeo.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6]);
+  wingGeo.computeVertexNormals();
+
+  const wingMat = new THREE.MeshStandardMaterial({
+    color: 0x4b535e,
+    roughness: 0.82,
+    metalness: 0.01,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.97,
+    depthWrite: false,
+    depthTest: true,
+  });
+  const wing = new THREE.Mesh(wingGeo, wingMat);
+  wing.renderOrder = 8;
+  wingGroup.add(wing);
+
+  const stripeMat = new THREE.LineBasicMaterial({
+    color: 0x25282d,
+    transparent: true,
+    opacity: 0.72,
+    depthWrite: false,
+    depthTest: true,
+  });
+  const stripeGeo = new THREE.BufferGeometry();
+  stripeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    -0.09, 0.055, 0.004, -0.29, 0.01, 0.004,
+    -0.14, 0.065, 0.004, -0.34, 0.025, 0.004,
+    -0.20, 0.05, 0.004, -0.36, -0.01, 0.004,
+    -0.26, 0.03, 0.004, -0.355, -0.025, 0.004,
+  ]), 3));
+  const stripes = new THREE.LineSegments(stripeGeo, stripeMat);
+  stripes.renderOrder = 9;
+  wingGroup.add(stripes);
+
+  return wingGroup;
+}
+
+function updatePigeonWings(pigeon, flightAmount, beat, time) {
+  const leftWing = pigeon.userData.leftWing;
+  const rightWing = pigeon.userData.rightWing;
+  if (!leftWing || !rightWing) return;
+
+  // More realistic flap: strong downstroke, relaxed upstroke (biased sin)
+  const s = Math.sin(beat);
+  const c = Math.cos(beat);
+  const flapPower = s * 1.05 + 0.18 * Math.max(0, s) + c * 0.09; // emphasis on down
+  const idle = Math.sin(time * 3.7 + pigeon.userData.flightPhase) * 0.035;
+
+  const spreadBase = THREE.MathUtils.lerp(0.64, 1.0, flightAmount);
+  // Fold wings slightly on upstroke for realism
+  const phaseFold = (1.0 - Math.max(0.0, Math.sin(beat + 0.6))) * 0.14;
+  const spread = spreadBase * (1.0 - phaseFold * flightAmount);
+
+  const sweepIdle = 0.06;
+  const sweep = THREE.MathUtils.lerp(sweepIdle, -0.18, flightAmount) + Math.sin(beat * 0.6) * 0.05 * flightAmount;
+  const lift = THREE.MathUtils.lerp(idle, flapPower, flightAmount);
+
+  const dihedral = -0.14 * flightAmount;
+  const rollExtra = -0.07 * flightAmount;
+
+  leftWing.visible = flightAmount > 0.015 || Math.abs(idle) > 0.012;
+  rightWing.visible = leftWing.visible;
+  leftWing.rotation.set(lift * 0.95, sweep, dihedral - rollExtra);
+  rightWing.rotation.set(-lift * 0.95, -sweep, -dihedral + rollExtra);
+  leftWing.scale.setScalar(spread);
+  rightWing.scale.setScalar(spread);
+}
+
 function createPigeon() {
-  const geo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
-  geo.translate(0, 0.35, 0);
+  const geo = new THREE.BoxGeometry(0.82, 0.82, 0.82);
+  geo.translate(0, 0.38, 0);
 
   const mat = new THREE.ShaderMaterial({
     vertexShader: pigeonVertexShader,
@@ -1224,18 +1642,28 @@ function createPigeon() {
   });
 
   const mesh = new THREE.Mesh(geo, mat);
+  const leftWing = createPigeonWing(1);
+  const rightWing = createPigeonWing(-1);
+  mesh.add(leftWing, rightWing);
 
   mesh.userData = {
     wingAngle: 0,
     isFlying: false,
-    speedX: 0,
-    speedY: 0,
-    speedZ: 0,
-    rotSpeed: 0,
     startX: 0,
     startY: 0,
     startZ: 0,
     startRotY: 0,
+    flightAge: 0,
+    flightDelay: 0,
+    flightDuration: 0,
+    flightDirX: 0,
+    flightDirZ: 1,
+    flightDistance: 0,
+    flightClimb: 0,
+    flightLateral: 0,
+    flightBank: 0,
+    flightPhase: 0,
+    flightYaw: 0,
     // Animation states
     peckProgress: 0,
     peckTimer: 0,
@@ -1243,10 +1671,267 @@ function createPigeon() {
     cooProgress: 0,
     cooTimer: 0,
     cooActive: false,
-    isFlyingVal: 0
+    isFlyingVal: 0,
+    leftWing,
+    rightWing
   };
 
+  updatePigeonWings(mesh, 0, 0, 0);
+
   return mesh;
+}
+
+const TAXI_SOCIAL_LINKS = [
+  { label: 'LINKEDIN', detail: 'william-kei-f', url: 'https://www.linkedin.com/in/william-kei-f', color: '#0a66c2' },
+  { label: 'GITHUB', detail: 'Sanokei', url: 'https://github.com/Sanokei', color: '#24292f' },
+  { label: 'INSTAGRAM', detail: '@_SanoKei', url: 'https://www.instagram.com/_SanoKei/', color: '#d62976' },
+];
+
+function makeTaxiTextTexture(lines, opts = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = opts.width || 512;
+  canvas.height = opts.height || 192;
+  const ctx = canvas.getContext('2d');
+  const bg = opts.bg || '#111111';
+  const fg = opts.fg || '#fff7d4';
+  const accent = opts.accent || '#f4c400';
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 10;
+  ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = fg;
+  ctx.font = '900 54px "Inter", Arial, sans-serif';
+  ctx.fillText(lines[0], canvas.width / 2, canvas.height * 0.43);
+
+  if (lines[1]) {
+    ctx.fillStyle = '#f4c400';
+    ctx.font = '800 30px "Inter", Arial, sans-serif';
+    ctx.fillText(lines[1], canvas.width / 2, canvas.height * 0.70);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeTaxiPanelTexture(link) {
+  return makeTaxiTextTexture([link.label, link.detail], {
+    width: 420,
+    height: 220,
+    bg: '#141414',
+    fg: '#fffdf2',
+    accent: link.color,
+  });
+}
+
+function createRoofSignGeometry(length, height, depth) {
+  const hx = length / 2;
+  const hz = depth / 2;
+  const vertices = new Float32Array([
+    -hx, 0, hz,
+     hx, 0, hz,
+    -hx, 0, -hz,
+     hx, 0, -hz,
+    -hx, height, 0,
+     hx, height, 0,
+  ]);
+  const indices = [
+    0, 1, 5, 0, 5, 4,
+    3, 2, 4, 3, 4, 5,
+    2, 3, 1, 2, 1, 0,
+    0, 4, 2,
+    1, 3, 5,
+  ];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createTaxi(scale = 1) {
+  const group = new THREE.Group();
+  group.name = 'nyc-taxi-social-links';
+
+  const clickableMeshes = [];
+  const taxiYellow = new THREE.MeshStandardMaterial({
+    color: 0xf4c400,
+    roughness: 0.46,
+    metalness: 0.06,
+  });
+  const taxiDarkYellow = new THREE.MeshStandardMaterial({
+    color: 0xd59a00,
+    roughness: 0.55,
+    metalness: 0.04,
+  });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0x182735,
+    roughness: 0.18,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.86,
+  });
+  const blackMat = new THREE.MeshStandardMaterial({
+    color: 0x111111,
+    roughness: 0.62,
+    metalness: 0.08,
+  });
+  const tireMat = new THREE.MeshStandardMaterial({
+    color: 0x080808,
+    roughness: 0.86,
+    metalness: 0.02,
+  });
+  const hubMat = new THREE.MeshStandardMaterial({
+    color: 0xc7c7c7,
+    roughness: 0.34,
+    metalness: 0.62,
+  });
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3b0 });
+  const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xb21d15 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3.24, 0.52, 1.12), taxiYellow);
+  body.position.set(0, 0.46, 0);
+  group.add(body);
+
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.34, 1.02), taxiYellow);
+  hood.position.set(-1.17, 0.64, 0);
+  group.add(hood);
+
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 1.02), taxiDarkYellow);
+  trunk.position.set(1.23, 0.63, 0);
+  group.add(trunk);
+
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.66, 1.0), taxiYellow);
+  cab.position.set(0.02, 1.0, 0);
+  group.add(cab);
+
+  const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(1.13, 0.36, 0.035), glassMat);
+  sideWindow.position.set(0.02, 1.07, 0.524);
+  group.add(sideWindow);
+
+  const farSideWindow = sideWindow.clone();
+  farSideWindow.position.z = -0.524;
+  group.add(farSideWindow);
+
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.34, 0.82), glassMat);
+  windshield.position.set(-0.66, 1.02, 0);
+  group.add(windshield);
+
+  const rearWindow = windshield.clone();
+  rearWindow.position.x = 0.70;
+  group.add(rearWindow);
+
+  const stripeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const sideStripe = new THREE.Mesh(new THREE.BoxGeometry(2.38, 0.055, 0.018), stripeMat);
+  sideStripe.position.set(0.08, 0.58, 0.574);
+  group.add(sideStripe);
+
+  const checkerGroup = new THREE.Group();
+  checkerGroup.position.set(-0.02, 0.66, 0.588);
+  for (let i = 0; i < 18; i++) {
+    const square = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.075, 0.014), i % 2 === 0 ? blackMat : taxiYellow);
+    square.position.set(-0.68 + i * 0.08, 0, 0);
+    checkerGroup.add(square);
+  }
+  group.add(checkerGroup);
+
+  const taxiDoorText = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.52, 0.18),
+    new THREE.MeshBasicMaterial({
+      map: makeTaxiTextTexture(['TAXI'], { width: 256, height: 96, bg: '#f4c400', fg: '#111111', accent: '#111111' }),
+      transparent: true,
+    }),
+  );
+  taxiDoorText.position.set(0.18, 0.78, 0.601);
+  group.add(taxiDoorText);
+
+  const wheelPositions = [
+    [-1.12, 0.22, 0.61],
+    [1.08, 0.22, 0.61],
+    [-1.12, 0.22, -0.61],
+    [1.08, 0.22, -0.61],
+  ];
+  for (const pos of wheelPositions) {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.13, 28), tireMat);
+    wheel.rotation.x = Math.PI / 2;
+    wheel.position.set(pos[0], pos[1], pos[2]);
+    group.add(wheel);
+
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.145, 18), hubMat);
+    hub.rotation.x = Math.PI / 2;
+    hub.position.copy(wheel.position);
+    group.add(hub);
+  }
+
+  const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.22), lightMat);
+  headlightL.position.set(-1.65, 0.55, 0.34);
+  const headlightR = headlightL.clone();
+  headlightR.position.z = -0.34;
+  group.add(headlightL, headlightR);
+
+  const taillightL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.2), tailLightMat);
+  taillightL.position.set(1.66, 0.54, 0.36);
+  const taillightR = taillightL.clone();
+  taillightR.position.z = -0.36;
+  group.add(taillightL, taillightR);
+
+  const signLength = 1.72;
+  const signHeight = 0.34;
+  const signDepth = 0.52;
+  const sign = new THREE.Mesh(
+    createRoofSignGeometry(signLength, signHeight, signDepth),
+    new THREE.MeshStandardMaterial({ color: 0xf4c400, roughness: 0.42, metalness: 0.08 }),
+  );
+  sign.position.set(0.02, 1.36, 0);
+  group.add(sign);
+
+  const panelSlope = -Math.atan((signDepth * 0.5) / signHeight);
+  const panelHeight = Math.hypot(signHeight, signDepth * 0.5);
+  const panelGap = 0.035;
+  const panelW = signLength / TAXI_SOCIAL_LINKS.length - panelGap;
+  TAXI_SOCIAL_LINKS.forEach((link, index) => {
+    const panel = new THREE.Mesh(
+      new THREE.PlaneGeometry(panelW, panelHeight * 0.88),
+      new THREE.MeshBasicMaterial({
+        map: makeTaxiPanelTexture(link),
+        side: THREE.DoubleSide,
+      }),
+    );
+    panel.position.set(
+      -signLength / 2 + panelW / 2 + index * (panelW + panelGap),
+      1.36 + signHeight * 0.5,
+      signDepth * 0.25 + 0.012,
+    );
+    panel.rotation.x = panelSlope;
+    panel.userData.socialLink = link;
+    panel.renderOrder = 12;
+    group.add(panel);
+    clickableMeshes.push(panel);
+  });
+
+  const rearPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(signLength * 0.92, panelHeight * 0.72),
+    new THREE.MeshBasicMaterial({
+      map: makeTaxiTextTexture(['SANO KEI', 'PORTFOLIO'], { width: 512, height: 160, bg: '#151515', fg: '#fffdf2', accent: '#f4c400' }),
+      side: THREE.DoubleSide,
+    }),
+  );
+  rearPanel.position.set(0.02, 1.36 + signHeight * 0.5, -signDepth * 0.25 - 0.012);
+  rearPanel.rotation.x = -panelSlope;
+  group.add(rearPanel);
+
+  group.scale.setScalar(scale);
+  return { group, clickableMeshes };
 }
 
 export function buildFloorAndBaseboard(scene, metrics, floorY = -114) {
@@ -1278,7 +1963,7 @@ export function buildFloorAndBaseboard(scene, metrics, floorY = -114) {
   scene.add(baseboard);
 }
 
-export function buildEnvironment(scene, projects, categoryOrder, camera) {
+export function buildEnvironment(scene, projects, categoryOrder, camera, renderer) {
   var layoutResult = buildModuleLayout(projects, categoryOrder);
   var sections = layoutResult.sections;
   var modules = layoutResult.modules;
@@ -1358,43 +2043,16 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
   const wallZ = 0;
   const wallFrontZ = metrics.wallZ; // front face of thickness 2.35 is metrics.wallZ = 1.175
 
-  const brickTexture = generateBrickTexture();
-  const brickMat = new THREE.MeshStandardMaterial({
-    map: brickTexture,
-    roughness: 0.82,
-    metalness: 0.03,
-  });
-  brickMat.onBeforeCompile = (shader) => {
-    shader.vertexShader = 'varying vec3 vBrickWorldPos;\n' + shader.vertexShader;
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <begin_vertex>',
-      `
-      #include <begin_vertex>
-      vBrickWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-      `
-    );
-    shader.fragmentShader = 'varying vec3 vBrickWorldPos;\n' + shader.fragmentShader;
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <map_fragment>',
-      `
-      #ifdef USE_MAP
-        vec3 n = abs(normalize(vNormal));
-        vec2 uvCoords;
-        if (n.z > 0.5) {
-          uvCoords = vBrickWorldPos.xy;
-        } else if (n.x > 0.5) {
-          uvCoords = vec2(vBrickWorldPos.z, vBrickWorldPos.y);
-        } else {
-          uvCoords = vBrickWorldPos.xz;
-        }
-        vec4 texelColor = texture2D( map, uvCoords * 0.8 );
-        diffuseColor *= texelColor;
-      #endif
-      `
-    );
-  };
+  const brickMat = makeBrickWallMaterial(renderer);
 
-  const leftWallW = (WALL_WIDTH - 2.2) / 2;
+  const streetScale = THREE.MathUtils.clamp(endingWallHeight / 4.8, 0.58, 1.0);
+  const openingW = THREE.MathUtils.clamp(
+    metrics.visibleWallWidth * 0.30,
+    1.2 * streetScale,
+    2.1 * streetScale,
+  );
+  const doorH = endingWallHeight * 0.72;
+  const leftWallW = (WALL_WIDTH - openingW) / 2;
   const leftWall = new THREE.Mesh(
     new THREE.BoxGeometry(leftWallW, endingWallHeight, WALL_THICKNESS),
     brickMat
@@ -1410,11 +2068,10 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
   rightWall.position.set(WALL_WIDTH / 2 - rightWallW / 2, floorY + endingWallHeight / 2, wallZ);
   endingBrickGroup.add(rightWall);
 
-  const doorH = 3.6;
   const headerH = endingWallHeight - doorH;
   if (headerH > 0.05) {
     const topWall = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, headerH, WALL_THICKNESS),
+      new THREE.BoxGeometry(openingW, headerH, WALL_THICKNESS),
       brickMat
     );
     topWall.position.set(0, floorY + doorH + headerH / 2, wallZ);
@@ -1422,40 +2079,45 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
   }
 
   const recessBackWall = new THREE.Mesh(
-    new THREE.BoxGeometry(2.2, doorH, 0.3),
+    new THREE.BoxGeometry(openingW, doorH, 0.3),
     brickMat
   );
   recessBackWall.position.set(0, floorY + doorH / 2, wallZ - 0.7 - 0.15);
   endingBrickGroup.add(recessBackWall);
 
   const leftJamb = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, doorH, 0.7),
+    new THREE.BoxGeometry(0.11 * streetScale, doorH, 0.7 * streetScale),
     brickMat
   );
-  leftJamb.position.set(-1.1 + 0.05, floorY + doorH / 2, wallZ - 0.35);
+  leftJamb.position.set(-openingW / 2 + 0.055 * streetScale, floorY + doorH / 2, wallZ - 0.35 * streetScale);
   const rightJamb = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, doorH, 0.7),
+    new THREE.BoxGeometry(0.11 * streetScale, doorH, 0.7 * streetScale),
     brickMat
   );
-  rightJamb.position.set(1.1 - 0.05, floorY + doorH / 2, wallZ - 0.35);
+  rightJamb.position.set(openingW / 2 - 0.055 * streetScale, floorY + doorH / 2, wallZ - 0.35 * streetScale);
   endingBrickGroup.add(leftJamb, rightJamb);
 
   const concreteStepMat = new THREE.MeshStandardMaterial({
     color: 0x8a8a8a,
     roughness: 0.8,
   });
-  const stepW = 2.3;
-  const stepH = 0.22;
-  const stepD = 0.8;
+  const sidewalkW = 32;
+  const sidewalkH = 0.12 * streetScale;
+  const sidewalkD = 1.16 * streetScale;
+  const roadH = 0.075 * streetScale;
+  const roadD = 2.7 * streetScale;
+  const stepW = Math.min(openingW + 0.24 * streetScale, metrics.visibleWallWidth * 0.42);
+  const stepH = 0.19 * streetScale;
+  const stepD = Math.min(0.62 * streetScale, sidewalkD * 0.78);
   const step = new THREE.Mesh(
     new THREE.BoxGeometry(stepW, stepH, stepD),
     concreteStepMat
   );
-  step.position.set(0, floorY + stepH / 2, wallFrontZ - 0.3);
+  step.position.set(0, floorY + stepH / 2, wallFrontZ + stepD / 2 + 0.02 * streetScale);
   endingBrickGroup.add(step);
 
-  const doorW = 2.0;
-  const doorHeight = 3.4;
+  const doorW = openingW - 0.22 * streetScale;
+  const doorHeight = doorH - stepH * 0.8;
   const doorMat = new THREE.MeshStandardMaterial({
     map: generateDoorWoodTexture(),
     roughness: 0.7,
@@ -1474,52 +2136,50 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
     metalness: 0.8,
   });
   const knob = new THREE.Mesh(
-    new THREE.SphereGeometry(0.045, 8, 8),
+    new THREE.SphereGeometry(0.045 * streetScale, 8, 8),
     knobMat
   );
-  knob.position.set(0.75, floorY + stepH + 1.6, wallZ - 0.58);
+  knob.position.set(doorW * 0.34, floorY + stepH + doorHeight * 0.48, wallZ - 0.58);
   endingBrickGroup.add(knob);
 
   const fixtureGroup = new THREE.Group();
-  fixtureGroup.position.set(0, floorY + doorH - 0.05, wallFrontZ);
+  const fixtureY = floorY + Math.min(doorH + 0.08 * streetScale, endingWallHeight - 0.34 * streetScale);
+  fixtureGroup.position.set(0, fixtureY, wallFrontZ);
   const armatureMat = new THREE.MeshStandardMaterial({
     color: 0x111111,
     roughness: 0.5,
     metalness: 0.5,
   });
   const pipe = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.35),
+    new THREE.CylinderGeometry(0.018 * streetScale, 0.018 * streetScale, 0.3 * streetScale),
     armatureMat
   );
   pipe.rotation.x = Math.PI / 2;
-  pipe.position.set(0, 0, 0.175);
+  pipe.position.set(0, 0, 0.15 * streetScale);
   fixtureGroup.add(pipe);
 
   const shade = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.01, 0.1, 0.12, 12),
+    new THREE.CylinderGeometry(0.01 * streetScale, 0.09 * streetScale, 0.11 * streetScale, 12),
     armatureMat
   );
-  shade.position.set(0, -0.06, 0.3);
+  shade.position.set(0, -0.055 * streetScale, 0.25 * streetScale);
   fixtureGroup.add(shade);
 
   const bulbMat = new THREE.MeshBasicMaterial({
     color: 0xfff0c0,
   });
   const bulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.04, 8, 8),
+    new THREE.SphereGeometry(0.036 * streetScale, 8, 8),
     bulbMat
   );
-  bulb.position.set(0, -0.12, 0.3);
+  bulb.position.set(0, -0.11 * streetScale, 0.25 * streetScale);
   fixtureGroup.add(bulb);
   endingBrickGroup.add(fixtureGroup);
 
   const flickerLight = new THREE.PointLight(0xfff0c0, 2.5, 6.0, 1.4);
-  flickerLight.position.set(0, floorY + doorH - 0.17, wallFrontZ + 0.3);
+  flickerLight.position.set(0, fixtureY - 0.12 * streetScale, wallFrontZ + 0.26 * streetScale);
   endingBrickGroup.add(flickerLight);
 
-  const sidewalkW = 32;
-  const sidewalkH = 0.15;
-  const sidewalkD = 3.5;
   const sidewalkMat = new THREE.MeshStandardMaterial({
     map: generateSidewalkTexture(),
     roughness: 0.85,
@@ -1531,59 +2191,99 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
   sidewalk.position.set(0, floorY + sidewalkH / 2, wallFrontZ + sidewalkD / 2);
   endingBrickGroup.add(sidewalk);
 
+  const curbMat = new THREE.MeshStandardMaterial({
+    color: 0xb6b4aa,
+    roughness: 0.74,
+    metalness: 0,
+  });
+  const curb = new THREE.Mesh(
+    new THREE.BoxGeometry(sidewalkW, 0.13 * streetScale, 0.12 * streetScale),
+    curbMat,
+  );
+  curb.position.set(0, floorY + 0.065 * streetScale, wallFrontZ + sidewalkD + 0.06 * streetScale);
+  endingBrickGroup.add(curb);
+
+  const roadMat = new THREE.MeshStandardMaterial({
+    color: 0x1d2022,
+    roughness: 0.92,
+    metalness: 0,
+  });
+  const road = new THREE.Mesh(
+    new THREE.BoxGeometry(sidewalkW, roadH, roadD),
+    roadMat,
+  );
+  road.position.set(0, floorY + roadH / 2 - 0.018 * streetScale, wallFrontZ + sidewalkD + roadD / 2);
+  endingBrickGroup.add(road);
+
+  const laneStripeMat = new THREE.MeshBasicMaterial({ color: 0xf5d65b });
+  const laneStripe = new THREE.Mesh(
+    new THREE.BoxGeometry(sidewalkW, 0.012 * streetScale, 0.035 * streetScale),
+    laneStripeMat,
+  );
+  laneStripe.position.set(0, floorY + roadH + 0.004 * streetScale, wallFrontZ + sidewalkD + roadD * 0.76);
+  endingBrickGroup.add(laneStripe);
+
   const lampGroup = new THREE.Group();
-  lampGroup.position.set(-6.2, floorY + sidewalkH, wallFrontZ + 1.2);
+  const streetSideX = Math.max(-metrics.visibleWallWidth * 0.46, -4.8);
+  lampGroup.position.set(streetSideX, floorY + sidewalkH, wallFrontZ + sidewalkD * 0.6);
   const lampPostMat = new THREE.MeshStandardMaterial({
     color: 0x2c3e50,
     roughness: 0.5,
     metalness: 0.6,
   });
+  const lampPoleHeight = Math.min(3.25 * streetScale, endingWallHeight - 0.55 * streetScale);
   const lampBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.16, 0.4, 8),
+    new THREE.CylinderGeometry(0.14 * streetScale, 0.14 * streetScale, 0.32 * streetScale, 8),
     lampPostMat
   );
-  lampBase.position.y = 0.2;
+  lampBase.position.y = 0.16 * streetScale;
   lampGroup.add(lampBase);
 
   const lampPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.04, 3.8, 8),
+    new THREE.CylinderGeometry(0.034 * streetScale, 0.034 * streetScale, lampPoleHeight, 8),
     lampPostMat
   );
-  lampPole.position.y = 0.4 + 1.9;
+  lampPole.position.y = 0.32 * streetScale + lampPoleHeight / 2;
   lampGroup.add(lampPole);
 
   const lampArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.6, 6),
+    new THREE.CylinderGeometry(0.018 * streetScale, 0.018 * streetScale, 0.56 * streetScale, 6),
     lampPostMat
   );
   lampArm.rotation.z = Math.PI / 2;
-  lampArm.position.set(0.3, 4.0, 0);
+  lampArm.position.set(0.28 * streetScale, 0.32 * streetScale + lampPoleHeight - 0.12 * streetScale, 0);
   lampGroup.add(lampArm);
 
   const lanternHousing = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.08, 0.12, 0.25, 6),
+    new THREE.CylinderGeometry(0.07 * streetScale, 0.11 * streetScale, 0.22 * streetScale, 6),
     lampPostMat
   );
-  lanternHousing.position.set(0.6, 3.9, 0);
+  lanternHousing.position.set(0.56 * streetScale, 0.32 * streetScale + lampPoleHeight - 0.18 * streetScale, 0);
   lampGroup.add(lanternHousing);
 
   const lanternBulbMat = new THREE.MeshBasicMaterial({
     color: 0xffe6a3,
   });
   const lanternBulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.06, 6, 6),
+    new THREE.SphereGeometry(0.052 * streetScale, 6, 6),
     lanternBulbMat
   );
-  lanternBulb.position.set(0.6, 3.75, 0);
+  lanternBulb.position.set(0.56 * streetScale, 0.32 * streetScale + lampPoleHeight - 0.32 * streetScale, 0);
   lampGroup.add(lanternBulb);
   endingBrickGroup.add(lampGroup);
 
   const lampLight = new THREE.PointLight(0xffe6a3, 1.8, 6.0, 1.3);
-  lampLight.position.set(-6.2 + 0.6, floorY + sidewalkH + 3.7, wallFrontZ + 1.2);
+  lampLight.position.set(
+    streetSideX + 0.56 * streetScale,
+    floorY + sidewalkH + 0.32 * streetScale + lampPoleHeight - 0.32 * streetScale,
+    wallFrontZ + sidewalkD * 0.6,
+  );
   endingBrickGroup.add(lampLight);
 
   const binGroup = new THREE.Group();
-  binGroup.position.set(5.8, floorY + sidewalkH, wallFrontZ + 1.5);
+  const binX = Math.min(metrics.visibleWallWidth * 0.43, 4.8);
+  binGroup.position.set(binX, floorY + sidewalkH, wallFrontZ + sidewalkD * 0.72);
+  binGroup.scale.setScalar(streetScale);
   const binMat = new THREE.MeshStandardMaterial({
     color: 0x7f8c8d,
     roughness: 0.4,
@@ -1609,26 +2309,44 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
   binGroup.add(binHandle);
   endingBrickGroup.add(binGroup);
 
+  const taxiScale = THREE.MathUtils.clamp(
+    Math.min(streetScale * 0.92, metrics.visibleWallWidth / 3.7),
+    0.52,
+    0.92,
+  );
+  const taxi = createTaxi(taxiScale);
+  const taxiGroup = taxi.group;
+  const taxiTargetX = 0.18 * taxiScale;
+  const taxiStartX = metrics.visibleWallWidth * 0.5 + 2.2 * taxiScale;
+  const narrowTaxiLift = THREE.MathUtils.clamp((3.8 - metrics.visibleWallWidth) / 1.4, 0, 1);
+  const taxiBaseY = floorY + roadH + THREE.MathUtils.lerp(0.08, 0.42, narrowTaxiLift) * taxiScale;
+  const taxiTargetZ = wallFrontZ + sidewalkD + roadD * 0.05;
+  taxiGroup.position.set(taxiStartX, taxiBaseY - 0.12 * taxiScale, taxiTargetZ);
+  endingBrickGroup.add(taxiGroup);
+
   const pigeons = [];
-  const pigeonCount = 5;
+  const pigeonCount = 7;
   const pigeonsGroup = new THREE.Group();
   pigeonsGroup.name = 'pigeons-group';
   endingBrickGroup.add(pigeonsGroup);
 
   for (let i = 0; i < pigeonCount; i++) {
     const pigeon = createPigeon();
-    const rx = (Math.random() - 0.5) * 5.0;
-    const rz = wallFrontZ + 0.7 + Math.random() * 2.1;
+    const rx = (Math.random() - 0.5) * Math.min(metrics.visibleWallWidth * 0.92, 5.4);
+    const rz = wallFrontZ + 0.2 * streetScale + Math.random() * Math.max(sidewalkD - 0.32 * streetScale, 0.12);
     const ry = floorY + sidewalkH;
     const rotY = Math.random() * Math.PI * 2;
+    const pigeonScale = (0.82 + Math.random() * 0.26) * streetScale;
 
     pigeon.position.set(rx, ry, rz);
     pigeon.rotation.y = rotY;
+    pigeon.scale.setScalar(pigeonScale);
 
     pigeon.userData.startX = rx;
     pigeon.userData.startY = ry;
     pigeon.userData.startZ = rz;
     pigeon.userData.startRotY = rotY;
+    pigeon.userData.startScale = pigeonScale;
 
     pigeonsGroup.add(pigeon);
     pigeons.push(pigeon);
@@ -1637,6 +2355,8 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
   let pigeonsFlying = false;
   let pigeonsFlightTimer = 0;
   let flickerTimer = 0;
+  let taxiArrival = 0;
+  let taxiHasArrived = false;
 
   function triggerPigeonFlyAway() {
     if (pigeonsFlying) return;
@@ -1645,11 +2365,28 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
 
     for (let i = 0; i < pigeons.length; i++) {
       const pigeon = pigeons[i];
+      const sideBias = pigeon.position.x >= 0 ? 1 : -1;
+      const dir = new THREE.Vector3(
+        sideBias * (0.25 + Math.random() * 0.65),
+        0,
+        1.0 + Math.random() * 0.55
+      ).normalize();
+
       pigeon.userData.isFlying = true;
-      pigeon.userData.speedY = 3.5 + Math.random() * 1.5;
-      pigeon.userData.speedX = (Math.random() - 0.5) * 2.8;
-      pigeon.userData.speedZ = (Math.random() * 2.2 + 1.2);
-      pigeon.userData.rotSpeed = (Math.random() - 0.5) * 3;
+      pigeon.userData.flightAge = 0;
+      pigeon.userData.flightDelay = i * 0.045 + Math.random() * 0.13;
+      pigeon.userData.flightDuration = 2.05 + Math.random() * 0.85;
+      pigeon.userData.flightDirX = dir.x;
+      pigeon.userData.flightDirZ = dir.z;
+      pigeon.userData.flightDistance = 6.4 + Math.random() * 3.6;
+      pigeon.userData.flightClimb = 3.35 + Math.random() * 2.35;
+      pigeon.userData.flightLateral = (Math.random() - 0.5) * 0.82;
+      pigeon.userData.flightBank = -sideBias * (0.26 + Math.random() * 0.24);
+      pigeon.userData.flightPhase = Math.random() * Math.PI * 2;
+      pigeon.userData.flightYaw = Math.atan2(-dir.z, dir.x);
+      pigeon.userData.wingAngle = pigeon.userData.flightPhase;
+      pigeon.userData.isFlyingVal = 0;
+      pigeon.rotation.set(0, pigeon.userData.flightYaw, 0);
     }
   }
 
@@ -1659,7 +2396,8 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
       const pigeon = pigeons[i];
       pigeon.position.set(pigeon.userData.startX, pigeon.userData.startY, pigeon.userData.startZ);
       pigeon.rotation.set(0, pigeon.userData.startRotY, 0);
-      pigeon.scale.set(1, 1, 1);
+      const resetScale = pigeon.userData.startScale || 1;
+      pigeon.scale.set(resetScale, resetScale, resetScale);
       pigeon.visible = true;
       pigeon.userData.isFlying = false;
 
@@ -1672,6 +2410,17 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
       pigeon.userData.cooActive = false;
       pigeon.userData.isFlyingVal = 0;
       pigeon.userData.wingAngle = 0;
+      pigeon.userData.flightAge = 0;
+      pigeon.userData.flightDelay = 0;
+      pigeon.userData.flightDuration = 0;
+      pigeon.userData.flightDirX = 0;
+      pigeon.userData.flightDirZ = 1;
+      pigeon.userData.flightDistance = 0;
+      pigeon.userData.flightClimb = 0;
+      pigeon.userData.flightLateral = 0;
+      pigeon.userData.flightBank = 0;
+      pigeon.userData.flightPhase = 0;
+      pigeon.userData.flightYaw = pigeon.userData.startRotY;
 
       // Reset shader uniforms
       if (pigeon.material && pigeon.material.uniforms) {
@@ -1680,19 +2429,49 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
         pigeon.material.uniforms.uPeckProgress.value = 0.0;
         pigeon.material.uniforms.uCooProgress.value = 0.0;
       }
+      updatePigeonWings(pigeon, 0, 0, 0);
     }
   }
 
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
+  let hoveredTaxiLink = null;
+
+  function setPointerRay(e) {
+    const width = renderer?.domElement?.clientWidth || window.innerWidth;
+    const height = renderer?.domElement?.clientHeight || window.innerHeight;
+    mouse.x = (e.clientX / width) * 2 - 1;
+    mouse.y = -(e.clientY / height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+  }
+
+  function getTaxiLinkAtPointer() {
+    const socialHits = raycaster.intersectObjects(taxi.clickableMeshes, false);
+    if (!socialHits.length) return null;
+    return socialHits[0].object.userData.socialLink || null;
+  }
+
+  function onWindowPointerMove(e) {
+    if (!camera) return;
+    setPointerRay(e);
+    hoveredTaxiLink = getTaxiLinkAtPointer();
+    if (renderer?.domElement) {
+      renderer.domElement.classList.toggle('interactive-hover', !!hoveredTaxiLink);
+    }
+  }
 
   function onWindowClick(e) {
     if (!camera) return;
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
+    setPointerRay(e);
 
-    const intersects = raycaster.intersectObjects([sidewalk, ...pigeons], true);
+    const taxiLink = getTaxiLinkAtPointer();
+    if (taxiLink) {
+      window.open(taxiLink.url, '_blank', 'noopener');
+      hoveredTaxiLink = null;
+      return;
+    }
+
+    const intersects = raycaster.intersectObjects([sidewalk, road, ...pigeons], true);
     if (intersects.length > 0) {
       const hit = intersects[0];
       let clickedPigeon = false;
@@ -1710,7 +2489,7 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
 
       if (clickedPigeon) {
         triggerPigeonFlyAway();
-      } else if (hit.object === sidewalk) {
+      } else if (hit.object === sidewalk || hit.object === road) {
         const hitX = hit.point.x;
         if (Math.abs(hitX) < 4.5) {
           triggerPigeonFlyAway();
@@ -1719,6 +2498,7 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
     }
   }
 
+  window.addEventListener('mousemove', onWindowPointerMove);
   window.addEventListener('click', onWindowClick);
 
   return {
@@ -1748,6 +2528,16 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
       } else {
         t = (cameraY - transitionEnd) / (transitionStart - transitionEnd);
       }
+
+      if (t < 0.32 || Math.abs(cameraY - transitionEnd) < 0.16) {
+        taxiHasArrived = true;
+      }
+      const taxiTarget = taxiHasArrived ? 1 : 0;
+      taxiArrival += (taxiTarget - taxiArrival) * (1 - Math.pow(0.045, dt * 60));
+      const taxiEase = taxiArrival * taxiArrival * (3 - 2 * taxiArrival);
+      taxiGroup.position.x = THREE.MathUtils.lerp(taxiStartX, taxiTargetX, taxiEase);
+      taxiGroup.position.y = taxiBaseY - (1 - taxiEase) * 0.12 * taxiScale + Math.sin(taxiEase * Math.PI) * 0.035 * taxiScale;
+      taxiGroup.rotation.y = Math.sin(taxiEase * Math.PI) * 0.035;
 
       // Transition background & fog colors
       if (scene.background && scene.background.isColor) {
@@ -1822,24 +2612,62 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
           const pigeon = pigeons[i];
           if (pigeon.userData.isFlying) {
             allGone = false;
-            pigeon.position.y += pigeon.userData.speedY * dt;
-            pigeon.position.x += pigeon.userData.speedX * dt;
-            pigeon.position.z += pigeon.userData.speedZ * dt;
-            pigeon.rotation.y += pigeon.userData.rotSpeed * dt;
+            pigeon.userData.flightAge += dt;
 
-            pigeon.userData.wingAngle += 25 * dt;
+            const age = Math.max(0, pigeon.userData.flightAge - pigeon.userData.flightDelay);
+            const duration = Math.max(pigeon.userData.flightDuration, 0.001);
+            const progress = THREE.MathUtils.clamp(age / duration, 0, 1);
+
+            // Realistic flight envelope: fast takeoff flaps then cruise/glide
+            const cruiseRate = 15.5 + Math.sin(age * 1.6) * 1.8; // slight varying rate for life
+            const flapFreq = THREE.MathUtils.lerp(42.0, cruiseRate, THREE.MathUtils.smoothstep(0.0, 0.65, age));
+            const wingBeat = pigeon.userData.flightPhase + age * flapFreq;
+
+            // Vertical motion with flap bob + initial hop + climb curve
+            const lift = 1.0 - Math.pow(1.0 - progress, 2.55);
+            const surge = Math.pow(progress, 0.96);
+            const flapBob = Math.sin(wingBeat) * 0.048 * (0.55 + 0.45 * (1.0 - Math.min(1.0, age * 1.4)));
+            const initialHop = Math.sin(Math.min(age * 7.5, 1.8) * Math.PI * 0.7) * 0.19 * Math.max(0.0, 1.0 - age * 0.9);
+            const climbY = pigeon.userData.flightClimb * lift + flapBob + initialHop;
+
+            const dirX = pigeon.userData.flightDirX;
+            const dirZ = pigeon.userData.flightDirZ;
+            const sideX = -dirZ;
+            const sideZ = dirX;
+            const weave = Math.sin(progress * Math.PI * 1.25 + pigeon.userData.flightPhase) *
+              pigeon.userData.flightLateral *
+              Math.sin(progress * Math.PI * 0.9);
+            const forward = pigeon.userData.flightDistance * surge;
+
+            pigeon.position.set(
+              pigeon.userData.startX + dirX * forward + sideX * weave,
+              pigeon.userData.startY + climbY,
+              pigeon.userData.startZ + dirZ * forward + sideZ * weave
+            );
+
+            // Bank + pitch + slight head lead yaw
+            const bank = pigeon.userData.flightBank * Math.sin(Math.min(progress * 1.75, 1.0) * Math.PI);
+            const pitch = THREE.MathUtils.lerp(0.48, 0.03, progress) + Math.sin(wingBeat) * 0.065 * (1.0 - progress * 0.6);
+            const yawWeave = Math.sin(progress * Math.PI * 1.7 + pigeon.userData.flightPhase) * 0.065 * (1.0 - progress * 0.7);
+            pigeon.rotation.set(bank, pigeon.userData.flightYaw + yawWeave, pitch);
+
+            pigeon.userData.wingAngle = wingBeat;
 
             if (pigeon.material && pigeon.material.uniforms) {
-              pigeon.userData.isFlyingVal = THREE.MathUtils.lerp(pigeon.userData.isFlyingVal, 1.0, 10 * dt);
+              const targetFlightPose = Math.min(1.0, THREE.MathUtils.smoothstep(0.0, 0.22, age) * 1.03);
+              pigeon.userData.isFlyingVal = THREE.MathUtils.lerp(pigeon.userData.isFlyingVal, targetFlightPose, 14 * dt);
               pigeon.material.uniforms.uIsFlying.value = pigeon.userData.isFlyingVal;
               pigeon.material.uniforms.uFlightProgress.value = pigeon.userData.wingAngle;
+              pigeon.material.uniforms.uPeckProgress.value = 0.0;
+              pigeon.material.uniforms.uCooProgress.value = 0.0;
             }
+            updatePigeonWings(pigeon, pigeon.userData.isFlyingVal, wingBeat, flickerTimer);
 
-            const currentScale = pigeon.scale.x;
-            if (currentScale > 0.01) {
-              const nextScale = Math.max(0, currentScale - 0.45 * dt);
-              pigeon.scale.set(nextScale, nextScale, nextScale);
-            } else {
+            const baseScale = pigeon.userData.startScale || 1;
+            const distanceScale = baseScale * THREE.MathUtils.lerp(1.0, 0.72, THREE.MathUtils.smoothstep(progress, 0.72, 1.0));
+            pigeon.scale.set(distanceScale, distanceScale, distanceScale);
+
+            if (progress >= 1) {
               pigeon.visible = false;
               pigeon.userData.isFlying = false;
             }
@@ -1859,6 +2687,7 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
             pigeon.userData.isFlyingVal = THREE.MathUtils.lerp(pigeon.userData.isFlyingVal, 0.0, 10 * dt);
             pigeon.material.uniforms.uIsFlying.value = pigeon.userData.isFlyingVal;
           }
+          updatePigeonWings(pigeon, pigeon.userData.isFlyingVal, pigeon.userData.wingAngle, flickerTimer);
 
           // Peck animation state update
           if (pigeon.userData.peckTarget > 0) {
@@ -1900,6 +2729,7 @@ export function buildEnvironment(scene, projects, categoryOrder, camera) {
       }
     },
     dispose: function() {
+      window.removeEventListener('mousemove', onWindowPointerMove);
       window.removeEventListener('click', onWindowClick);
     }
   };
