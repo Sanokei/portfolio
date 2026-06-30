@@ -1724,14 +1724,99 @@ function makeTaxiTextTexture(lines, opts = {}) {
   return texture;
 }
 
-function makeTaxiPanelTexture(link) {
-  return makeTaxiTextTexture([link.label, link.detail], {
-    width: 420,
-    height: 220,
-    bg: '#141414',
-    fg: '#fffdf2',
-    accent: link.color,
-  });
+function makeBrandLogoTexture(link) {
+  // Clean, recognizable brand glyph on the company's own color — the lit
+  // taxi-top ad reads as logos rather than a wall of text.
+  const canvas = document.createElement('canvas');
+  canvas.width = 300;
+  canvas.height = 240;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+
+  function roundRectPath(x, y, rw, rh, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + rw, y, x + rw, y + rh, r);
+    ctx.arcTo(x + rw, y + rh, x, y + rh, r);
+    ctx.arcTo(x, y + rh, x, y, r);
+    ctx.arcTo(x, y, x + rw, y, r);
+    ctx.closePath();
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (link.label === 'LINKEDIN') {
+    ctx.fillStyle = '#0a66c2';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 150px "Inter", Arial, sans-serif';
+    ctx.fillText('in', cx, h * 0.52);
+  } else if (link.label === 'GITHUB') {
+    ctx.fillStyle = '#1d2127';
+    ctx.fillRect(0, 0, w, h);
+    const gy = h * 0.42;
+    const R = 58;
+    ctx.fillStyle = '#ffffff';
+    // ears
+    ctx.beginPath();
+    ctx.moveTo(cx - R * 0.78, gy - R * 0.55);
+    ctx.lineTo(cx - R * 0.18, gy - R * 0.95);
+    ctx.lineTo(cx - R * 0.20, gy - R * 0.20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + R * 0.78, gy - R * 0.55);
+    ctx.lineTo(cx + R * 0.18, gy - R * 0.95);
+    ctx.lineTo(cx + R * 0.20, gy - R * 0.20);
+    ctx.closePath();
+    ctx.fill();
+    // head
+    ctx.beginPath();
+    ctx.arc(cx, gy, R, 0, Math.PI * 2);
+    ctx.fill();
+    // eyes
+    ctx.fillStyle = '#1d2127';
+    ctx.beginPath();
+    ctx.arc(cx - 22, gy + 2, 9, 0, Math.PI * 2);
+    ctx.arc(cx + 22, gy + 2, 9, 0, Math.PI * 2);
+    ctx.fill();
+    // wordmark
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 38px "Inter", Arial, sans-serif';
+    ctx.fillText('GitHub', cx, h * 0.86);
+  } else {
+    // Instagram — gradient ground + camera glyph
+    const g = ctx.createLinearGradient(0, h, w, 0);
+    g.addColorStop(0, '#feda75');
+    g.addColorStop(0.3, '#fa7e1e');
+    g.addColorStop(0.6, '#d62976');
+    g.addColorStop(0.85, '#962fbf');
+    g.addColorStop(1, '#4f5bd5');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const gy = h * 0.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 15;
+    ctx.lineJoin = 'round';
+    roundRectPath(cx - 62, gy - 62, 124, 124, 34);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, gy, 34, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx + 40, gy - 40, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 function createRoofSignGeometry(length, height, depth) {
@@ -1765,6 +1850,10 @@ function createTaxi(scale = 1) {
 
   const clickableMeshes = [];
   const wheels = [];
+  // Items that brighten as the scene turns to night (n: 0 day -> 1 night).
+  const nightLights = [];     // { light, night }       — PointLight intensity
+  const nightEmissives = [];  // { mat, day, night }     — emissiveIntensity
+  const nightGlows = [];      // { mat, day, night }     — additive halo opacity
 
   // Modest shared material set for the whole cab
   const taxiYellow = new THREE.MeshStandardMaterial({ color: 0xf6c000, roughness: 0.4, metalness: 0.12 });
@@ -1774,8 +1863,13 @@ function createTaxi(scale = 1) {
   const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd6d9dc, roughness: 0.22, metalness: 0.92 });
   const tireMat = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.88, metalness: 0.02 });
   const hubMat = new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: 0.3, metalness: 0.72 });
-  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3b0 });
-  const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xc01d15 });
+  const lightMat = new THREE.MeshStandardMaterial({ color: 0xfff6c8, emissive: 0xfff0b0, emissiveIntensity: 0.2, roughness: 0.3, metalness: 0.1 });
+  const tailLightMat = new THREE.MeshStandardMaterial({ color: 0xc01d15, emissive: 0xff2a18, emissiveIntensity: 0.2, roughness: 0.35, metalness: 0.1 });
+  nightEmissives.push({ mat: lightMat, day: 0.2, night: 1.5 });
+  nightEmissives.push({ mat: tailLightMat, day: 0.2, night: 1.4 });
+  const glowDiscMat = (hex) => new THREE.MeshBasicMaterial({
+    color: hex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+  });
 
   const bodyWidth = 1.06;
   const halfW = bodyWidth / 2;
@@ -1921,20 +2015,44 @@ function createTaxi(scale = 1) {
     group.add(bar);
   }
 
-  // Round headlights on the -X (leading, left) end
+  // Round headlights on the -X (leading, left) end, each with a soft additive halo
   for (const zs of [1, -1]) {
     const head = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 16), lightMat);
     head.rotation.z = Math.PI / 2;
     head.position.set(-1.55, 0.56, zs * 0.34);
     group.add(head);
-  }
 
-  // Rectangular tail lights on the +X (trailing, right) end
+    const haloMat = glowDiscMat(0xfff3c0);
+    const halo = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), haloMat);
+    halo.position.set(-1.62, 0.56, zs * 0.34);
+    halo.rotation.y = -Math.PI / 2;
+    halo.renderOrder = 6;
+    group.add(halo);
+    nightGlows.push({ mat: haloMat, day: 0.0, night: 0.75 });
+  }
+  const headBeam = new THREE.PointLight(0xfff2c8, 0, 2.6, 2);
+  headBeam.position.set(-1.95, 0.56, 0);
+  group.add(headBeam);
+  nightLights.push({ light: headBeam, night: 2.2 });
+
+  // Rectangular tail lights on the +X (trailing, right) end, each with a red halo
   for (const zs of [1, -1]) {
     const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.18), tailLightMat);
     tail.position.set(1.58, 0.55, zs * 0.36);
     group.add(tail);
+
+    const haloMat = glowDiscMat(0xff2a18);
+    const halo = new THREE.Mesh(new THREE.CircleGeometry(0.13, 18), haloMat);
+    halo.position.set(1.625, 0.55, zs * 0.36);
+    halo.rotation.y = Math.PI / 2;
+    halo.renderOrder = 6;
+    group.add(halo);
+    nightGlows.push({ mat: haloMat, day: 0.0, night: 0.7 });
   }
+  const tailBeam = new THREE.PointLight(0xff2a18, 0, 1.7, 2);
+  tailBeam.position.set(1.95, 0.55, 0);
+  group.add(tailBeam);
+  nightLights.push({ light: tailBeam, night: 0.9 });
 
   // Side mirrors at the A-pillar
   for (const zs of [1, -1]) {
@@ -1952,12 +2070,22 @@ function createTaxi(scale = 1) {
   const signDepth = 0.48;
   const signCenterX = 0.16; // roof-flat center, so the sign rests symmetrically
   const signBaseY = roofTop - 0.02; // nestle slightly into the rounded roof
+  const signBodyMat = new THREE.MeshStandardMaterial({
+    color: 0xf4c400, emissive: 0xffcf3a, emissiveIntensity: 0.15, roughness: 0.42, metalness: 0.08,
+  });
+  nightEmissives.push({ mat: signBodyMat, day: 0.15, night: 0.95 });
   const sign = new THREE.Mesh(
     createRoofSignGeometry(signLength, signHeight, signDepth),
-    new THREE.MeshStandardMaterial({ color: 0xf4c400, roughness: 0.42, metalness: 0.08 }),
+    signBodyMat,
   );
   sign.position.set(signCenterX, signBaseY, 0);
   group.add(sign);
+
+  // The lit ad box throws a little warm light onto the roof.
+  const signBeam = new THREE.PointLight(0xffe6a0, 0, 2.8, 2);
+  signBeam.position.set(signCenterX, signBaseY + signHeight + 0.12, 0);
+  group.add(signBeam);
+  nightLights.push({ light: signBeam, night: 1.5 });
 
   const panelSlope = -Math.atan((signDepth * 0.5) / signHeight);
   const panelHeight = Math.hypot(signHeight, signDepth * 0.5);
@@ -1967,7 +2095,7 @@ function createTaxi(scale = 1) {
     const panel = new THREE.Mesh(
       new THREE.PlaneGeometry(panelW, panelHeight * 0.88),
       new THREE.MeshBasicMaterial({
-        map: makeTaxiPanelTexture(link),
+        map: makeBrandLogoTexture(link),
         side: THREE.DoubleSide,
       }),
     );
@@ -1995,7 +2123,23 @@ function createTaxi(scale = 1) {
   group.add(rearPanel);
 
   group.scale.setScalar(scale);
-  return { group, clickableMeshes, wheels };
+
+  function setNightLevel(n) {
+    const k = THREE.MathUtils.clamp(n, 0, 1);
+    for (let i = 0; i < nightEmissives.length; i++) {
+      const e = nightEmissives[i];
+      e.mat.emissiveIntensity = THREE.MathUtils.lerp(e.day, e.night, k);
+    }
+    for (let i = 0; i < nightGlows.length; i++) {
+      const gl = nightGlows[i];
+      gl.mat.opacity = THREE.MathUtils.lerp(gl.day, gl.night, k);
+    }
+    for (let i = 0; i < nightLights.length; i++) {
+      nightLights[i].light.intensity = nightLights[i].night * k;
+    }
+  }
+
+  return { group, clickableMeshes, wheels, setNightLevel };
 }
 
 export function buildFloorAndBaseboard(scene, metrics, floorY = -114) {
@@ -2166,12 +2310,22 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   recessBackConcrete.position.set(0, floorY + recessConcreteH / 2, recessZ);
   endingBrickGroup.add(recessBackConcrete);
 
-  // Concrete soffit on the underside of the header overhang.
+  // Concrete soffit (poured lintel underside) spanning the FULL reveal depth —
+  // from the street-facing wall face all the way back to the recessed entry
+  // wall — so the overhang reads as concrete to the front instead of bare brick.
+  const soffitH = 0.09 * streetScale;
+  const overhangFrontZ = wallFrontZ - 0.005;   // flush with the front wall face
+  const overhangBackZ = recessZ + 0.15;        // meets the recessed back wall
+  const soffitDepth = overhangFrontZ - overhangBackZ;
   const recessSoffit = new THREE.Mesh(
-    new THREE.BoxGeometry(openingW, 0.07 * streetScale, 0.7),
+    new THREE.BoxGeometry(openingW, soffitH, soffitDepth),
     recessConcreteMat
   );
-  recessSoffit.position.set(0, floorY + doorH - 0.035 * streetScale, wallZ - 0.35);
+  recessSoffit.position.set(
+    0,
+    floorY + doorH - soffitH / 2,
+    (overhangFrontZ + overhangBackZ) / 2,
+  );
   endingBrickGroup.add(recessSoffit);
 
   const leftJamb = new THREE.Mesh(
@@ -2206,9 +2360,9 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   endingBrickGroup.add(step);
 
   const doorW = openingW - 0.22 * streetScale;
-  // Keep the door top below the concrete soffit (header underside) so it
-  // never pokes through it; soffit underside sits at floorY + doorH - 0.07*streetScale.
-  const doorHeight = doorH - stepH - 0.08 * streetScale;
+  // Keep the door top a hair below the concrete soffit underside (which sits at
+  // floorY + doorH - soffitH) so the door never pokes through the overhang.
+  const doorHeight = doorH - stepH - soffitH - 0.03 * streetScale;
   const doorMat = new THREE.MeshStandardMaterial({
     map: generateDoorWoodTexture(),
     roughness: 0.7,
@@ -2448,13 +2602,16 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   let pigeonsFlying = false;
   let pigeonsFlightTimer = 0;
   let flickerTimer = 0;
-  // Taxi pass-through state. The exit is latched + time-based so it always
-  // completes and never reverses if the user nudges the scroll back up. It
-  // resets once the camera climbs back into the museum so the pass replays.
+  // Taxi choreography state. The cab drives in and PARKS in front of the door
+  // at the bottom; scrolling back up releases a latched, time-based speed-off
+  // to the left that always completes. Everything rearms once the camera climbs
+  // back into the museum so the sequence replays.
   let taxiExiting = false;
+  let taxiHasParked = false;
   let taxiDriveOut = 0;   // 0..1 exit progress once latched
   let taxiWheelSpin = 0;  // accumulated wheel roll angle (radians)
-  const TAXI_EXIT_TIME = 1.6; // seconds to fully clear the left edge
+  const TAXI_EXIT_TIME = 1.05;   // seconds to clear the left edge (speed-off)
+  const TAXI_PARK_RELEASE = 0.6; // scroll-up margin (world units) that releases the cab
 
   function triggerPigeonFlyAway() {
     if (pigeonsFlying) return;
@@ -2627,32 +2784,39 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
         t = (cameraY - transitionEnd) / (transitionStart - transitionEnd);
       }
 
-      // --- Taxi drive-through choreography ---------------------------
-      // Climbing back into the museum (above the ending transition) rearms
-      // the pass so it replays the next time the user scrolls down.
+      // Light up the cab (headlights, tail lights, lit ad box) as night falls.
+      if (taxi.setNightLevel) taxi.setNightLevel(1 - t);
+
+      // --- Taxi choreography -----------------------------------------
+      // Drive IN from the right as the camera descends, PARK in front of the
+      // door at the bottom, then SPEED OFF to the left when the user scrolls
+      // back up. Climbing into the museum rearms the whole sequence.
       if (cameraY > transitionStart) {
         taxiExiting = false;
         taxiDriveOut = 0;
+        taxiHasParked = false;
       }
 
-      // Phase 1 (drive-in) is motivated by scroll: as the camera descends
-      // the night transition (t goes 1 -> 0) the taxi rolls in from the
-      // right. driveInRaw == proximity to the bottom; dividing by 0.85 makes
-      // it fully arrive at center a little before the very bottom so the
-      // pass-through reads clearly.
+      // Drive-in is motivated by scroll proximity to the bottom; dividing by
+      // 0.85 lets the cab settle at center just before the very bottom so the
+      // park reads clearly.
       const driveSpan = Math.max(transitionStart - transitionEnd, 0.001);
       const driveInRaw = THREE.MathUtils.clamp((transitionStart - cameraY) / driveSpan, 0, 1);
       const driveIn = THREE.MathUtils.clamp(driveInRaw / 0.85, 0, 1);
 
-      // Latch the drive-out (and fire the pigeons) when the camera bottoms
-      // out. Once latched it stays latched, so a small upward scroll nudge
-      // cannot send the taxi back into reverse.
-      if (!taxiExiting && Math.abs(cameraY - layoutResult.minY) < 0.16) {
-        taxiExiting = true;
+      // Reaching the bottom parks the cab in front of the door and scatters the
+      // pigeons (once per arrival).
+      if (Math.abs(cameraY - layoutResult.minY) < 0.18 && !taxiHasParked) {
+        taxiHasParked = true;
         triggerPigeonFlyAway();
       }
-      // Drive-out is time-based: it always completes the left exit smoothly,
-      // independent of where the user parks the scroll.
+
+      // Having parked, scrolling back up past a small margin releases the cab to
+      // speed off left. The exit latches + is time-based so it always clears and
+      // never reverses on a downward nudge.
+      if (taxiHasParked && !taxiExiting && cameraY > layoutResult.minY + TAXI_PARK_RELEASE) {
+        taxiExiting = true;
+      }
       if (taxiExiting) {
         taxiDriveOut = Math.min(1, taxiDriveOut + dt / TAXI_EXIT_TIME);
       }
@@ -2661,8 +2825,8 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
       const easeIn = driveIn * driveIn * (3 - 2 * driveIn);
       const easeOut = taxiDriveOut * taxiDriveOut * (3 - 2 * taxiDriveOut);
 
-      // X is continuous across the handoff: at the latch moment easeIn is ~1
-      // (taxi at taxiTargetX) and the exit starts from that same taxiTargetX.
+      // X is continuous across the handoff: at the release moment easeIn is ~1
+      // (cab at taxiTargetX) and the exit lerp also starts from taxiTargetX.
       const prevTaxiX = taxiGroup.position.x;
       taxiGroup.position.x = taxiExiting
         ? THREE.MathUtils.lerp(taxiTargetX, taxiExitX, easeOut)
