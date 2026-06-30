@@ -9,7 +9,7 @@ import {
   WALL_HEIGHT,
   WALL_Y_CENTER,
   WALL_THICKNESS,
-} from './layout.js?v=taxi-ending4';
+} from './layout.js?v=ending-revamp';
 
 const lampMaterial = new THREE.MeshStandardMaterial({
   color: 0x070707,
@@ -720,13 +720,13 @@ function generateMarbleTexture() {
   return texture;
 }
 
-const BRICK_WORLD_TEXTURE_SCALE = 0.79;
+const BRICK_WORLD_TEXTURE_SCALE = 0.275;
 let endingBrickTexture = null;
 
 function generateBrickTexture(renderer) {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
-  canvas.height = 512;
+  canvas.height = 1024;
 
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(canvas.width, canvas.height);
@@ -761,7 +761,7 @@ function generateBrickTexture(renderer) {
 
   function fields(u, v) {
     const cols = 7;
-    const rows = 8;
+    const rows = 22;
     const x = u * cols;
     const y = v * rows;
     const rowID = Math.floor(y);
@@ -958,7 +958,7 @@ function makeBrickWallMaterial(renderer) {
       }
 
       float brickHeightField(vec2 uv, out float body, out float edgeDist) {
-        vec2 tile = uv * vec2(7.0, 8.0);
+        vec2 tile = uv * vec2(7.0, 22.0);
         float row = floor(tile.y);
         tile.x += mod(abs(row), 2.0) * 0.5;
         vec2 cell = floor(tile);
@@ -1764,80 +1764,100 @@ function createTaxi(scale = 1) {
   group.name = 'nyc-taxi-social-links';
 
   const clickableMeshes = [];
-  const taxiYellow = new THREE.MeshStandardMaterial({
-    color: 0xf4c400,
-    roughness: 0.46,
-    metalness: 0.06,
-  });
-  const taxiDarkYellow = new THREE.MeshStandardMaterial({
-    color: 0xd59a00,
-    roughness: 0.55,
-    metalness: 0.04,
-  });
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0x182735,
-    roughness: 0.18,
-    metalness: 0.08,
-    transparent: true,
-    opacity: 0.86,
-  });
-  const blackMat = new THREE.MeshStandardMaterial({
-    color: 0x111111,
-    roughness: 0.62,
-    metalness: 0.08,
-  });
-  const tireMat = new THREE.MeshStandardMaterial({
-    color: 0x080808,
-    roughness: 0.86,
-    metalness: 0.02,
-  });
-  const hubMat = new THREE.MeshStandardMaterial({
-    color: 0xc7c7c7,
-    roughness: 0.34,
-    metalness: 0.62,
-  });
+  const wheels = [];
+
+  // Modest shared material set for the whole cab
+  const taxiYellow = new THREE.MeshStandardMaterial({ color: 0xf6c000, roughness: 0.4, metalness: 0.12 });
+  const taxiDarkYellow = new THREE.MeshStandardMaterial({ color: 0xcf9400, roughness: 0.55, metalness: 0.08 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x16212e, roughness: 0.12, metalness: 0.22, transparent: true, opacity: 0.84 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x0e0e0e, roughness: 0.55, metalness: 0.16 });
+  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd6d9dc, roughness: 0.22, metalness: 0.92 });
+  const tireMat = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.88, metalness: 0.02 });
+  const hubMat = new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: 0.3, metalness: 0.72 });
   const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3b0 });
-  const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xb21d15 });
+  const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xc01d15 });
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(3.24, 0.52, 1.12), taxiYellow);
-  body.position.set(0, 0.46, 0);
-  group.add(body);
+  const bodyWidth = 1.06;
+  const halfW = bodyWidth / 2;
 
-  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.34, 1.02), taxiYellow);
-  hood.position.set(-1.17, 0.64, 0);
-  group.add(hood);
+  // --- Lower body hull: a rounded, beveled side-profile extruded across the width ---
+  // -X end is the front (headlights / grille), +X end is the rear (tail lights).
+  const hull = new THREE.Shape();
+  hull.moveTo(-1.54, 0.34);   // front lower
+  hull.lineTo( 1.56, 0.34);   // rocker to the rear
+  hull.lineTo( 1.62, 0.46);   // rear bumper height
+  hull.lineTo( 1.58, 0.58);
+  hull.lineTo( 1.38, 0.66);   // trunk lid
+  hull.lineTo( 0.92, 0.70);   // rear deck / beltline
+  hull.lineTo(-0.66, 0.70);   // cowl (windshield base)
+  hull.lineTo(-1.06, 0.62);   // hood sloping down
+  hull.lineTo(-1.50, 0.60);   // front fender top
+  hull.lineTo(-1.62, 0.48);   // nose
+  hull.closePath();
 
-  const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 1.02), taxiDarkYellow);
-  trunk.position.set(1.23, 0.63, 0);
-  group.add(trunk);
+  const hullDepth = bodyWidth - 0.12;
+  const hullGeo = new THREE.ExtrudeGeometry(hull, {
+    depth: hullDepth, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 2, steps: 1,
+  });
+  hullGeo.translate(0, 0, -hullDepth / 2);
+  group.add(new THREE.Mesh(hullGeo, taxiYellow));
 
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.66, 1.0), taxiYellow);
-  cab.position.set(0.02, 1.0, 0);
-  group.add(cab);
+  // Dark rocker / valance grounding the silhouette
+  const valance = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.12, bodyWidth - 0.02), taxiDarkYellow);
+  valance.position.set(0.0, 0.30, 0);
+  group.add(valance);
 
-  const sideWindow = new THREE.Mesh(new THREE.BoxGeometry(1.13, 0.36, 0.035), glassMat);
-  sideWindow.position.set(0.02, 1.07, 0.524);
-  group.add(sideWindow);
+  // --- Greenhouse / cabin: narrower beveled trapezoid (raked A & C pillars, rounded roof) ---
+  const cabinWidth = 0.92;
+  const cabin = new THREE.Shape();
+  cabin.moveTo(-0.62, 0.70);  // windshield base
+  cabin.lineTo( 0.90, 0.70);  // rear-window base
+  cabin.lineTo( 0.58, 1.10);  // roof rear
+  cabin.lineTo(-0.26, 1.10);  // roof front
+  cabin.closePath();
+  const cabinDepth = cabinWidth - 0.08;
+  const cabinGeo = new THREE.ExtrudeGeometry(cabin, {
+    depth: cabinDepth, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2, steps: 1,
+  });
+  cabinGeo.translate(0, 0, -cabinDepth / 2);
+  group.add(new THREE.Mesh(cabinGeo, taxiYellow));
+  const roofTop = 1.10 + 0.05; // rounded roof apex incl. bevel
 
-  const farSideWindow = sideWindow.clone();
-  farSideWindow.position.z = -0.524;
-  group.add(farSideWindow);
-
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.34, 0.82), glassMat);
-  windshield.position.set(-0.66, 1.02, 0);
+  // Sloped windshield + rear glass seated on the cabin faces
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.03, 0.86), glassMat);
+  windshield.position.set(-0.44, 0.90, 0);
+  windshield.rotation.z = Math.atan2(1.10 - 0.70, -0.26 - (-0.62));
   group.add(windshield);
 
-  const rearWindow = windshield.clone();
-  rearWindow.position.x = 0.70;
-  group.add(rearWindow);
+  const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.03, 0.84), glassMat);
+  rearGlass.position.set(0.74, 0.90, 0);
+  rearGlass.rotation.z = Math.atan2(0.70 - 1.10, 0.90 - 0.58);
+  group.add(rearGlass);
 
-  const stripeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const sideStripe = new THREE.Mesh(new THREE.BoxGeometry(2.38, 0.055, 0.018), stripeMat);
-  sideStripe.position.set(0.08, 0.58, 0.574);
-  group.add(sideStripe);
+  // Side glass on both flanks, split by a B-pillar
+  const glassZ = cabinWidth / 2 + 0.005;
+  for (const zs of [1, -1]) {
+    const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.30, 0.02), glassMat);
+    frontWin.position.set(-0.20, 0.90, zs * glassZ);
+    group.add(frontWin);
+    const rearWin = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.30, 0.02), glassMat);
+    rearWin.position.set(0.42, 0.90, zs * glassZ);
+    group.add(rearWin);
+    const bPillar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 0.03), blackMat);
+    bPillar.position.set(0.13, 0.90, zs * glassZ);
+    group.add(bPillar);
+  }
 
+  // Thin chrome beltline trim down each flank
+  for (const zs of [1, -1]) {
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.03, 0.02), chromeMat);
+    trim.position.set(0.0, 0.665, zs * (halfW + 0.01));
+    group.add(trim);
+  }
+
+  // Iconic checker band + TAXI door text on the camera-facing (+Z) flank
   const checkerGroup = new THREE.Group();
-  checkerGroup.position.set(-0.02, 0.66, 0.588);
+  checkerGroup.position.set(-0.02, 0.60, halfW + 0.02);
   for (let i = 0; i < 18; i++) {
     const square = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.075, 0.014), i % 2 === 0 ? blackMat : taxiYellow);
     square.position.set(-0.68 + i * 0.08, 0, 0);
@@ -1852,47 +1872,91 @@ function createTaxi(scale = 1) {
       transparent: true,
     }),
   );
-  taxiDoorText.position.set(0.18, 0.78, 0.601);
+  taxiDoorText.position.set(0.18, 0.47, halfW + 0.025);
   group.add(taxiDoorText);
 
-  const wheelPositions = [
-    [-1.12, 0.22, 0.61],
-    [1.08, 0.22, 0.61],
-    [-1.12, 0.22, -0.61],
-    [1.08, 0.22, -0.61],
-  ];
-  for (const pos of wheelPositions) {
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.13, 28), tireMat);
-    wheel.rotation.x = Math.PI / 2;
-    wheel.position.set(pos[0], pos[1], pos[2]);
-    group.add(wheel);
+  // --- Wheels: inset, with sidewall + chrome hubcap, plus a dark fender arch ---
+  const archGeo = new THREE.TorusGeometry(0.30, 0.05, 8, 18, Math.PI); // top-half arch in the XY plane
+  for (const wx of [-1.12, 1.12]) {
+    for (const zs of [1, -1]) {
+      const wheel = new THREE.Group();
+      wheel.position.set(wx, 0.24, zs * 0.46);
 
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.145, 18), hubMat);
-    hub.rotation.x = Math.PI / 2;
-    hub.position.copy(wheel.position);
-    group.add(hub);
+      const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.14, 26), tireMat);
+      tire.rotation.x = Math.PI / 2;
+      wheel.add(tire);
+
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.155, 18), hubMat);
+      hub.rotation.x = Math.PI / 2;
+      wheel.add(hub);
+
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.16, 10), chromeMat);
+      cap.rotation.x = Math.PI / 2;
+      wheel.add(cap);
+
+      group.add(wheel);
+      wheels.push(wheel);
+
+      const arch = new THREE.Mesh(archGeo, blackMat);
+      arch.position.set(wx, 0.24, zs * (halfW - 0.01));
+      group.add(arch);
+    }
   }
 
-  const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.22), lightMat);
-  headlightL.position.set(-1.65, 0.55, 0.34);
-  const headlightR = headlightL.clone();
-  headlightR.position.z = -0.34;
-  group.add(headlightL, headlightR);
+  // --- Front grille + chrome bumpers ---
+  const frontBumper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, bodyWidth - 0.04), chromeMat);
+  frontBumper.position.set(-1.6, 0.42, 0);
+  group.add(frontBumper);
 
-  const taillightL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.2), tailLightMat);
-  taillightL.position.set(1.66, 0.54, 0.36);
-  const taillightR = taillightL.clone();
-  taillightR.position.z = -0.36;
-  group.add(taillightL, taillightR);
+  const rearBumper = frontBumper.clone();
+  rearBumper.position.x = 1.6;
+  group.add(rearBumper);
 
-  const signLength = 1.72;
-  const signHeight = 0.34;
-  const signDepth = 0.52;
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, 0.66), blackMat);
+  grille.position.set(-1.555, 0.56, 0);
+  group.add(grille);
+  for (let i = 0; i < 3; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.6), chromeMat);
+    bar.position.set(-1.55, 0.50 + i * 0.06, 0);
+    group.add(bar);
+  }
+
+  // Round headlights on the -X (leading, left) end
+  for (const zs of [1, -1]) {
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 16), lightMat);
+    head.rotation.z = Math.PI / 2;
+    head.position.set(-1.55, 0.56, zs * 0.34);
+    group.add(head);
+  }
+
+  // Rectangular tail lights on the +X (trailing, right) end
+  for (const zs of [1, -1]) {
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.18), tailLightMat);
+    tail.position.set(1.58, 0.55, zs * 0.36);
+    group.add(tail);
+  }
+
+  // Side mirrors at the A-pillar
+  for (const zs of [1, -1]) {
+    const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.08), chromeMat);
+    stalk.position.set(-0.6, 0.84, zs * (halfW + 0.03));
+    group.add(stalk);
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.05), taxiYellow);
+    mirror.position.set(-0.62, 0.86, zs * (halfW + 0.09));
+    group.add(mirror);
+  }
+
+  // --- Roof TAXI sign with clickable social-link panels ---
+  const signLength = 1.4;
+  const signHeight = 0.3;
+  const signDepth = 0.48;
+  const signCenterX = 0.16; // roof-flat center, so the sign rests symmetrically
+  const signBaseY = roofTop - 0.02; // nestle slightly into the rounded roof
   const sign = new THREE.Mesh(
     createRoofSignGeometry(signLength, signHeight, signDepth),
     new THREE.MeshStandardMaterial({ color: 0xf4c400, roughness: 0.42, metalness: 0.08 }),
   );
-  sign.position.set(0.02, 1.36, 0);
+  sign.position.set(signCenterX, signBaseY, 0);
   group.add(sign);
 
   const panelSlope = -Math.atan((signDepth * 0.5) / signHeight);
@@ -1908,8 +1972,8 @@ function createTaxi(scale = 1) {
       }),
     );
     panel.position.set(
-      -signLength / 2 + panelW / 2 + index * (panelW + panelGap),
-      1.36 + signHeight * 0.5,
+      signCenterX - signLength / 2 + panelW / 2 + index * (panelW + panelGap),
+      signBaseY + signHeight * 0.5,
       signDepth * 0.25 + 0.012,
     );
     panel.rotation.x = panelSlope;
@@ -1926,12 +1990,12 @@ function createTaxi(scale = 1) {
       side: THREE.DoubleSide,
     }),
   );
-  rearPanel.position.set(0.02, 1.36 + signHeight * 0.5, -signDepth * 0.25 - 0.012);
+  rearPanel.position.set(signCenterX, signBaseY + signHeight * 0.5, -signDepth * 0.25 - 0.012);
   rearPanel.rotation.x = -panelSlope;
   group.add(rearPanel);
 
   group.scale.setScalar(scale);
-  return { group, clickableMeshes };
+  return { group, clickableMeshes, wheels };
 }
 
 export function buildFloorAndBaseboard(scene, metrics, floorY = -114) {
@@ -2078,12 +2142,37 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
     endingBrickGroup.add(topWall);
   }
 
-  const recessBackWall = new THREE.Mesh(
-    new THREE.BoxGeometry(openingW, doorH, 0.3),
+  // Recessed-entry back wall: brick facing band over a poured-concrete base.
+  const recessConcreteMat = new THREE.MeshStandardMaterial({
+    color: 0x7e7e78,
+    roughness: 0.92,
+    metalness: 0.0,
+  });
+  const recessZ = wallZ - 0.7 - 0.15;
+  const recessBrickBandH = Math.min(doorH * 0.2, 0.55 * streetScale);
+  const recessConcreteH = doorH - recessBrickBandH;
+
+  const recessBackBrick = new THREE.Mesh(
+    new THREE.BoxGeometry(openingW, recessBrickBandH, 0.3),
     brickMat
   );
-  recessBackWall.position.set(0, floorY + doorH / 2, wallZ - 0.7 - 0.15);
-  endingBrickGroup.add(recessBackWall);
+  recessBackBrick.position.set(0, floorY + doorH - recessBrickBandH / 2, recessZ);
+  endingBrickGroup.add(recessBackBrick);
+
+  const recessBackConcrete = new THREE.Mesh(
+    new THREE.BoxGeometry(openingW, recessConcreteH, 0.3),
+    recessConcreteMat
+  );
+  recessBackConcrete.position.set(0, floorY + recessConcreteH / 2, recessZ);
+  endingBrickGroup.add(recessBackConcrete);
+
+  // Concrete soffit on the underside of the header overhang.
+  const recessSoffit = new THREE.Mesh(
+    new THREE.BoxGeometry(openingW, 0.07 * streetScale, 0.7),
+    recessConcreteMat
+  );
+  recessSoffit.position.set(0, floorY + doorH - 0.035 * streetScale, wallZ - 0.35);
+  endingBrickGroup.add(recessSoffit);
 
   const leftJamb = new THREE.Mesh(
     new THREE.BoxGeometry(0.11 * streetScale, doorH, 0.7 * streetScale),
@@ -2117,7 +2206,9 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   endingBrickGroup.add(step);
 
   const doorW = openingW - 0.22 * streetScale;
-  const doorHeight = doorH - stepH * 0.8;
+  // Keep the door top below the concrete soffit (header underside) so it
+  // never pokes through it; soffit underside sits at floorY + doorH - 0.07*streetScale.
+  const doorHeight = doorH - stepH - 0.08 * streetScale;
   const doorMat = new THREE.MeshStandardMaterial({
     map: generateDoorWoodTexture(),
     roughness: 0.7,
@@ -2318,6 +2409,8 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   const taxiGroup = taxi.group;
   const taxiTargetX = 0.18 * taxiScale;
   const taxiStartX = metrics.visibleWallWidth * 0.5 + 2.2 * taxiScale;
+  // Off-left exit: fully past the visible wall so the taxi disappears.
+  const taxiExitX = -(metrics.visibleWallWidth * 0.5 + 2.6 * taxiScale);
   const narrowTaxiLift = THREE.MathUtils.clamp((3.8 - metrics.visibleWallWidth) / 1.4, 0, 1);
   const taxiBaseY = floorY + roadH + THREE.MathUtils.lerp(0.08, 0.42, narrowTaxiLift) * taxiScale;
   const taxiTargetZ = wallFrontZ + sidewalkD + roadD * 0.05;
@@ -2355,8 +2448,13 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   let pigeonsFlying = false;
   let pigeonsFlightTimer = 0;
   let flickerTimer = 0;
-  let taxiArrival = 0;
-  let taxiHasArrived = false;
+  // Taxi pass-through state. The exit is latched + time-based so it always
+  // completes and never reverses if the user nudges the scroll back up. It
+  // resets once the camera climbs back into the museum so the pass replays.
+  let taxiExiting = false;
+  let taxiDriveOut = 0;   // 0..1 exit progress once latched
+  let taxiWheelSpin = 0;  // accumulated wheel roll angle (radians)
+  const TAXI_EXIT_TIME = 1.6; // seconds to fully clear the left edge
 
   function triggerPigeonFlyAway() {
     if (pigeonsFlying) return;
@@ -2529,15 +2627,63 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
         t = (cameraY - transitionEnd) / (transitionStart - transitionEnd);
       }
 
-      if (t < 0.32 || Math.abs(cameraY - transitionEnd) < 0.16) {
-        taxiHasArrived = true;
+      // --- Taxi drive-through choreography ---------------------------
+      // Climbing back into the museum (above the ending transition) rearms
+      // the pass so it replays the next time the user scrolls down.
+      if (cameraY > transitionStart) {
+        taxiExiting = false;
+        taxiDriveOut = 0;
       }
-      const taxiTarget = taxiHasArrived ? 1 : 0;
-      taxiArrival += (taxiTarget - taxiArrival) * (1 - Math.pow(0.045, dt * 60));
-      const taxiEase = taxiArrival * taxiArrival * (3 - 2 * taxiArrival);
-      taxiGroup.position.x = THREE.MathUtils.lerp(taxiStartX, taxiTargetX, taxiEase);
-      taxiGroup.position.y = taxiBaseY - (1 - taxiEase) * 0.12 * taxiScale + Math.sin(taxiEase * Math.PI) * 0.035 * taxiScale;
-      taxiGroup.rotation.y = Math.sin(taxiEase * Math.PI) * 0.035;
+
+      // Phase 1 (drive-in) is motivated by scroll: as the camera descends
+      // the night transition (t goes 1 -> 0) the taxi rolls in from the
+      // right. driveInRaw == proximity to the bottom; dividing by 0.85 makes
+      // it fully arrive at center a little before the very bottom so the
+      // pass-through reads clearly.
+      const driveSpan = Math.max(transitionStart - transitionEnd, 0.001);
+      const driveInRaw = THREE.MathUtils.clamp((transitionStart - cameraY) / driveSpan, 0, 1);
+      const driveIn = THREE.MathUtils.clamp(driveInRaw / 0.85, 0, 1);
+
+      // Latch the drive-out (and fire the pigeons) when the camera bottoms
+      // out. Once latched it stays latched, so a small upward scroll nudge
+      // cannot send the taxi back into reverse.
+      if (!taxiExiting && Math.abs(cameraY - layoutResult.minY) < 0.16) {
+        taxiExiting = true;
+        triggerPigeonFlyAway();
+      }
+      // Drive-out is time-based: it always completes the left exit smoothly,
+      // independent of where the user parks the scroll.
+      if (taxiExiting) {
+        taxiDriveOut = Math.min(1, taxiDriveOut + dt / TAXI_EXIT_TIME);
+      }
+
+      // Smoothstep eases for each phase.
+      const easeIn = driveIn * driveIn * (3 - 2 * driveIn);
+      const easeOut = taxiDriveOut * taxiDriveOut * (3 - 2 * taxiDriveOut);
+
+      // X is continuous across the handoff: at the latch moment easeIn is ~1
+      // (taxi at taxiTargetX) and the exit starts from that same taxiTargetX.
+      const prevTaxiX = taxiGroup.position.x;
+      taxiGroup.position.x = taxiExiting
+        ? THREE.MathUtils.lerp(taxiTargetX, taxiExitX, easeOut)
+        : THREE.MathUtils.lerp(taxiStartX, taxiTargetX, easeIn);
+
+      // Settle down onto the road as it arrives; keep a faint driving bob.
+      const settle = taxiExiting ? 1 : easeIn;
+      const drivingBob = Math.sin(flickerTimer * 6.2) * 0.012 * taxiScale;
+      taxiGroup.position.y = taxiBaseY - (1 - settle) * 0.12 * taxiScale + Math.sin(settle * Math.PI) * 0.03 * taxiScale + drivingBob;
+      taxiGroup.rotation.y = Math.sin(settle * Math.PI) * 0.03;
+
+      // Spin the wheel groups (axle along local Z) from the actual frame-to-
+      // frame travel so the speed reads honestly — fast on the way in/out,
+      // still at the pause. Tire radius is 0.25 in local space.
+      const taxiTravel = prevTaxiX - taxiGroup.position.x;
+      taxiWheelSpin += taxiTravel / (0.25 * taxiScale);
+      if (taxi.wheels) {
+        for (let wi = 0; wi < taxi.wheels.length; wi++) {
+          taxi.wheels[wi].rotation.z = taxiWheelSpin;
+        }
+      }
 
       // Transition background & fog colors
       if (scene.background && scene.background.isColor) {
@@ -2600,9 +2746,9 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
         }
       });
 
-      if (Math.abs(cameraY - layoutResult.minY) < 0.12) {
-        triggerPigeonFlyAway();
-      }
+      // Pigeon fly-away is now latched together with the taxi exit in the
+      // choreography block above (both fire when the camera bottoms out),
+      // so they stay synchronized.
 
       if (pigeonsFlying) {
         pigeonsFlightTimer += dt;

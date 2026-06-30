@@ -187,7 +187,7 @@ export function getLayoutMetrics() {
     plaqueH,
     headerW,
     headerH,
-    endingWallHeight: visibleWallHeight * 0.92,
+    endingWallHeight: visibleWallHeight * 1.15,
   };
 }
 

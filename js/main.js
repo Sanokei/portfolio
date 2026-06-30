@@ -10,10 +10,10 @@ import { projects, categoryOrder } from './projects.js?v=minimal-loader';
 import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
 import { buildCarousels } from './carousel.js?v=minimal-loader';
 import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=minimal-loader';
-import { buildEnvironment } from './environment.js?v=real-brick-pigeons';
+import { buildEnvironment } from './environment.js?v=ending-revamp';
 import { initInteractions } from './interactions.js?v=minimal-loader';
 import { initPlaqueFocus } from './plaqueFocus.js';
-import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=taxi-ending4';
+import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=ending-revamp';
 
 const INTRO_TIMING = {
   loadingFadeMs: 750,
