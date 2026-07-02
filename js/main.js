@@ -10,7 +10,7 @@ import { projects, categoryOrder } from './projects.js?v=minimal-loader';
 import { initScroll, SCROLL_INPUT_EVENT, setBounds, setSnapPoints, setTargetY } from './scroll.js?v=minimal-loader';
 import { buildCarousels } from './carousel.js?v=minimal-loader';
 import { buildHeaderPlaque, buildProjectPlaques } from './plaque.js?v=minimal-loader';
-import { buildEnvironment } from './environment.js?v=alley-dumpster';
+import { buildEnvironment } from './environment.js?v=taxi-rehail';
 import { initInteractions } from './interactions.js?v=minimal-loader';
 import { initPlaqueFocus } from './plaqueFocus.js';
 import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=ending-revamp';
@@ -109,7 +109,9 @@ async function main() {
     setSnapPoints(
       cavityData.map(cd => cd.worldY),
       Math.min(maxY - 0.2, cavityData[0].worldY + metrics.visibleWallHeight * 0.5),
-      lastProjectY - 0.3 * metrics.spacing,
+      // Snap dies at the last project: anything below it is the ending
+      // descent, and idle snap must not drag the camera back up out of it.
+      lastProjectY,
     );
 
     const desiredY = initial ? metrics.headerY : camera.position.y;

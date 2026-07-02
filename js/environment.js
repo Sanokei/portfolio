@@ -3316,6 +3316,19 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
       } else if (taxiState === 'offscreen' && cameraY < taxiArriveTriggerY) {
         // Descending into the alley cues the cab to drive in and park.
         startTaxiArrive();
+      } else if (
+        taxiState === 'gone' &&
+        cameraY < layoutResult.minY + TAXI_PARK_RELEASE * 0.4
+      ) {
+        // Back at the curb after the cab sped off: hail a fresh one from the
+        // right so the bottom of the alley is never left empty. The lower
+        // threshold (vs the release margin) is hysteresis so wiggling across
+        // the release line doesn't churn cabs.
+        taxiHasDeparted = false;
+        taxiGroup.position.x = taxiStartX;
+        taxiGroup.rotation.z = 0;
+        lastTaxiX = taxiStartX;
+        startTaxiArrive();
       }
 
       // Reaching the bottom scatters the pigeons (once per arrival).
