@@ -65,16 +65,17 @@
   <!-- YouTube embeds rendered behind CRT screens -->
   <div id="youtube-layer"></div>
 
-  <!-- Import map: Three.js from CDN -->
+  <!-- Import map: Three.js + GSAP from CDN -->
   <script type="importmap">
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.13.0/+esm"
     }
   }
   </script>
 
-  <script type="module" src="./js/main.js?v=museum-signs"></script>
+  <script type="module" src="./js/main.js?v=gsap-taxi"></script>
 </body>
 </html>

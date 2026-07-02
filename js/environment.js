@@ -1,6 +1,7 @@
 // environment.js - Vertical white museum wall labels and overhead lamps.
 
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 import {
   buildModuleLayout,
   getLayoutMetrics,
@@ -722,6 +723,14 @@ function generateMarbleTexture() {
 
 const BRICK_WORLD_TEXTURE_SCALE = 0.275;
 let endingBrickTexture = null;
+
+// Survive rebuildScene so a resize mid-scene doesn't corrupt the taxi
+// choreography: a cab that already sped off must not resurrect and re-park,
+// and a bottomed-out visit must still release the cab on scroll-up even if
+// the scene was rebuilt in between. Both are cleared by resetTaxi when the
+// camera climbs back into the museum.
+let taxiHasDeparted = false;
+let hasBottomedOut = false;
 
 function generateBrickTexture(renderer) {
   const canvas = document.createElement('canvas');
@@ -1757,32 +1766,15 @@ function makeBrandLogoTexture(link) {
   } else if (link.label === 'GITHUB') {
     ctx.fillStyle = '#1d2127';
     ctx.fillRect(0, 0, w, h);
-    const gy = h * 0.42;
-    const R = 58;
+    // Official octicon mark-github path (16x16 viewBox), scaled up.
+    const markPath = new Path2D('M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0016 8c0-4.42-3.58-8-8-8z');
+    const markSize = 120;
+    ctx.save();
+    ctx.translate(cx - markSize / 2, h * 0.42 - markSize / 2);
+    ctx.scale(markSize / 16, markSize / 16);
     ctx.fillStyle = '#ffffff';
-    // ears
-    ctx.beginPath();
-    ctx.moveTo(cx - R * 0.78, gy - R * 0.55);
-    ctx.lineTo(cx - R * 0.18, gy - R * 0.95);
-    ctx.lineTo(cx - R * 0.20, gy - R * 0.20);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx + R * 0.78, gy - R * 0.55);
-    ctx.lineTo(cx + R * 0.18, gy - R * 0.95);
-    ctx.lineTo(cx + R * 0.20, gy - R * 0.20);
-    ctx.closePath();
-    ctx.fill();
-    // head
-    ctx.beginPath();
-    ctx.arc(cx, gy, R, 0, Math.PI * 2);
-    ctx.fill();
-    // eyes
-    ctx.fillStyle = '#1d2127';
-    ctx.beginPath();
-    ctx.arc(cx - 22, gy + 2, 9, 0, Math.PI * 2);
-    ctx.arc(cx + 22, gy + 2, 9, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fill(markPath, 'evenodd');
+    ctx.restore();
     // wordmark
     ctx.fillStyle = '#ffffff';
     ctx.font = '800 38px "Inter", Arial, sans-serif';
@@ -1858,7 +1850,7 @@ function createTaxi(scale = 1) {
   // Modest shared material set for the whole cab
   const taxiYellow = new THREE.MeshStandardMaterial({ color: 0xf6c000, roughness: 0.4, metalness: 0.12 });
   const taxiDarkYellow = new THREE.MeshStandardMaterial({ color: 0xcf9400, roughness: 0.55, metalness: 0.08 });
-  const glassMat = new THREE.MeshStandardMaterial({ color: 0x16212e, roughness: 0.12, metalness: 0.22, transparent: true, opacity: 0.84 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x16212e, roughness: 0.12, metalness: 0.22, transparent: true, opacity: 0.84, side: THREE.DoubleSide });
   const blackMat = new THREE.MeshStandardMaterial({ color: 0x0e0e0e, roughness: 0.55, metalness: 0.16 });
   const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd6d9dc, roughness: 0.22, metalness: 0.92 });
   const tireMat = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.88, metalness: 0.02 });
@@ -1917,25 +1909,42 @@ function createTaxi(scale = 1) {
   group.add(new THREE.Mesh(cabinGeo, taxiYellow));
   const roofTop = 1.10 + 0.05; // rounded roof apex incl. bevel
 
-  // Sloped windshield + rear glass seated on the cabin faces
+  // Sloped windshield + rear glass. The cabin bevel bulges the extruded
+  // profile 0.05 outward, so the glass sits lifted along each face normal
+  // rather than centered on the shape outline (which would bury it).
   const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.03, 0.86), glassMat);
-  windshield.position.set(-0.44, 0.90, 0);
+  windshield.position.set(-0.496, 0.95, 0);
   windshield.rotation.z = Math.atan2(1.10 - 0.70, -0.26 - (-0.62));
   group.add(windshield);
 
   const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.03, 0.84), glassMat);
-  rearGlass.position.set(0.74, 0.90, 0);
+  rearGlass.position.set(0.80, 0.95, 0);
   rearGlass.rotation.z = Math.atan2(0.70 - 1.10, 0.90 - 0.58);
   group.add(rearGlass);
 
-  // Side glass on both flanks, split by a B-pillar
-  const glassZ = cabinWidth / 2 + 0.005;
+  // Side glass on both flanks, split by a B-pillar. Trapezoids that follow
+  // the raked A/C pillars so the panes stay inside the cabin silhouette.
+  const glassZ = cabinDepth / 2 + 0.05 + 0.002; // just proud of the flank cap
+  const frontWinShape = new THREE.Shape();
+  frontWinShape.moveTo(-0.505, 0.75);
+  frontWinShape.lineTo(0.10, 0.75);
+  frontWinShape.lineTo(0.10, 1.05);
+  frontWinShape.lineTo(-0.235, 1.05);
+  frontWinShape.closePath();
+  const rearWinShape = new THREE.Shape();
+  rearWinShape.moveTo(0.16, 0.75);
+  rearWinShape.lineTo(0.79, 0.75);
+  rearWinShape.lineTo(0.55, 1.05);
+  rearWinShape.lineTo(0.16, 1.05);
+  rearWinShape.closePath();
+  const frontWinGeo = new THREE.ShapeGeometry(frontWinShape);
+  const rearWinGeo = new THREE.ShapeGeometry(rearWinShape);
   for (const zs of [1, -1]) {
-    const frontWin = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.30, 0.02), glassMat);
-    frontWin.position.set(-0.20, 0.90, zs * glassZ);
+    const frontWin = new THREE.Mesh(frontWinGeo, glassMat);
+    frontWin.position.z = zs * glassZ;
     group.add(frontWin);
-    const rearWin = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.30, 0.02), glassMat);
-    rearWin.position.set(0.42, 0.90, zs * glassZ);
+    const rearWin = new THREE.Mesh(rearWinGeo, glassMat);
+    rearWin.position.z = zs * glassZ;
     group.add(rearWin);
     const bPillar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 0.03), blackMat);
     bPillar.position.set(0.13, 0.90, zs * glassZ);
@@ -2054,13 +2063,14 @@ function createTaxi(scale = 1) {
   group.add(tailBeam);
   nightLights.push({ light: tailBeam, night: 0.9 });
 
-  // Side mirrors at the A-pillar
+  // Side mirrors at the A-pillar base: the stalk's inner end embeds in the
+  // cabin flank (cap at z ±0.47) so the mirror hangs off the door, attached.
   for (const zs of [1, -1]) {
-    const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.08), chromeMat);
-    stalk.position.set(-0.6, 0.84, zs * (halfW + 0.03));
+    const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.03, 0.14), chromeMat);
+    stalk.position.set(-0.50, 0.76, zs * 0.52);
     group.add(stalk);
-    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.05), taxiYellow);
-    mirror.position.set(-0.62, 0.86, zs * (halfW + 0.09));
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.10, 0.05), taxiYellow);
+    mirror.position.set(-0.50, 0.79, zs * 0.60);
     group.add(mirror);
   }
 
@@ -2091,6 +2101,14 @@ function createTaxi(scale = 1) {
   const panelHeight = Math.hypot(signHeight, signDepth * 0.5);
   const panelGap = 0.035;
   const panelW = signLength / TAXI_SOCIAL_LINKS.length - panelGap;
+  // The panel row spans signLength - panelGap; center it on the sign face
+  // instead of flushing it to the left edge.
+  const panelRowW = signLength - panelGap;
+  // Lift the panels along the sloped face normal so they float evenly
+  // proud of the ad space rather than sinking at the top edge.
+  const panelLift = 0.012;
+  const liftY = panelLift * (signDepth * 0.5) / panelHeight;
+  const liftZ = panelLift * signHeight / panelHeight;
   TAXI_SOCIAL_LINKS.forEach((link, index) => {
     const panel = new THREE.Mesh(
       new THREE.PlaneGeometry(panelW, panelHeight * 0.88),
@@ -2100,9 +2118,9 @@ function createTaxi(scale = 1) {
       }),
     );
     panel.position.set(
-      signCenterX - signLength / 2 + panelW / 2 + index * (panelW + panelGap),
-      signBaseY + signHeight * 0.5,
-      signDepth * 0.25 + 0.012,
+      signCenterX - panelRowW / 2 + panelW / 2 + index * (panelW + panelGap),
+      signBaseY + signHeight * 0.5 + liftY,
+      signDepth * 0.25 + liftZ,
     );
     panel.rotation.x = panelSlope;
     panel.userData.socialLink = link;
@@ -2118,7 +2136,7 @@ function createTaxi(scale = 1) {
       side: THREE.DoubleSide,
     }),
   );
-  rearPanel.position.set(signCenterX, signBaseY + signHeight * 0.5, -signDepth * 0.25 - 0.012);
+  rearPanel.position.set(signCenterX, signBaseY + signHeight * 0.5 + liftY, -(signDepth * 0.25 + liftZ));
   rearPanel.rotation.x = -panelSlope;
   group.add(rearPanel);
 
@@ -2171,6 +2189,312 @@ export function buildFloorAndBaseboard(scene, metrics, floorY = -114) {
   scene.add(baseboard);
 }
 
+// --- Volumetric night atmosphere (ending section) -------------------------
+// Fake volumetrics: an additive open-ended cone under the door fixture with a
+// view-angle silhouette falloff (bright looking through the beam core, soft at
+// the edges), plus drifting mist banks.
+// Everything is faded in by the existing day->night scroll factor.
+
+function makeVolumetricBeamMaterial(colorHex) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uColor: { value: new THREE.Color(colorHex) },
+      uIntensity: { value: 0 },
+      uTime: { value: 0 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      varying vec3 vWorldNormal;
+      void main() {
+        vUv = uv;
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uIntensity;
+      uniform float uTime;
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      varying vec3 vWorldNormal;
+
+      float beamHash(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+
+      // Value noise periodic in x so the cylinder's u=0/1 wrap (which faces
+      // the camera on these beams) doesn't show a seam.
+      float beamNoise(vec2 p, float periodX) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        float x0 = mod(i.x, periodX);
+        float x1 = mod(i.x + 1.0, periodX);
+        return mix(
+          mix(beamHash(vec2(x0, i.y)), beamHash(vec2(x1, i.y)), u.x),
+          mix(beamHash(vec2(x0, i.y + 1.0)), beamHash(vec2(x1, i.y + 1.0)), u.x),
+          u.y
+        );
+      }
+
+      void main() {
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        // Silhouette edges of the cone have normals perpendicular to the view
+        // ray; fading by the facing term reads as looking through more haze
+        // at the beam core than at its rim.
+        float facing = abs(dot(normalize(vWorldNormal), viewDir));
+        float core = pow(facing, 2.4);
+        float groundFade = smoothstep(0.0, 0.42, vUv.y);
+        float apexFade = 0.55 + 0.45 * smoothstep(1.0, 0.72, vUv.y);
+        float shimmer = 0.82 + 0.18 * beamNoise(vec2(vUv.x * 6.0, vUv.y * 3.0 - uTime * 0.14), 6.0);
+        gl_FragColor = vec4(uColor, uIntensity * core * groundFade * apexFade * shimmer);
+      }
+    `,
+  });
+}
+
+function addVolumetricBeam(parent, opts) {
+  const geometry = new THREE.CylinderGeometry(
+    opts.topRadius,
+    opts.bottomRadius,
+    opts.height,
+    24,
+    10,
+    true,
+  );
+  const material = makeVolumetricBeamMaterial(opts.color);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(opts.x, opts.topY - opts.height / 2, opts.z);
+  mesh.renderOrder = 5;
+  mesh.visible = false;
+  parent.add(mesh);
+  return { mesh, material };
+}
+
+function makeMistTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+
+  let seed = 4271;
+  function rand() {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  }
+
+  // Overlapping soft blobs make an uneven fog bank instead of a clean ellipse.
+  for (let i = 0; i < 9; i++) {
+    const x = 40 + rand() * (canvas.width - 80);
+    const y = canvas.height * (0.45 + rand() * 0.3);
+    const r = 50 + rand() * 90;
+    const alpha = 0.16 + rand() * 0.2;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, 0.38 + rand() * 0.2);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    g.addColorStop(0, 'rgba(255,255,255,' + alpha.toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  return texture;
+}
+
+function createRain(parent, opts) {
+  const count = opts.count;
+  const positions = new Float32Array(count * 6);
+  const drops = new Array(count);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.LineBasicMaterial({
+    color: 0xaebfd9,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const lines = new THREE.LineSegments(geometry, material);
+  // Positions sweep the whole alley volume every second — skip culling
+  // rather than recompute bounds.
+  lines.frustumCulled = false;
+  lines.visible = false;
+  lines.renderOrder = 7;
+  parent.add(lines);
+
+  function respawn(drop, anywhere) {
+    drop.x = opts.minX + Math.random() * (opts.maxX - opts.minX);
+    drop.z = opts.minZ + Math.random() * (opts.maxZ - opts.minZ);
+    drop.y = anywhere
+      ? opts.floorY + Math.random() * opts.height
+      : opts.floorY + opts.height * (0.92 + Math.random() * 0.08);
+    drop.speed = opts.speed * (0.75 + Math.random() * 0.5);
+  }
+  for (let i = 0; i < count; i++) {
+    drops[i] = {};
+    respawn(drops[i], true);
+  }
+
+  // Streaks lean into the wind by the same ratio the drops travel.
+  const slantPerUnit = opts.wind / opts.speed;
+  function update(dt) {
+    for (let i = 0; i < count; i++) {
+      const drop = drops[i];
+      drop.y -= drop.speed * dt;
+      drop.x += opts.wind * dt;
+      if (drop.y < opts.floorY) respawn(drop, false);
+      if (drop.x < opts.minX) drop.x += opts.maxX - opts.minX;
+      if (drop.x > opts.maxX) drop.x -= opts.maxX - opts.minX;
+      const len = opts.streak * (drop.speed / opts.speed);
+      const j = i * 6;
+      positions[j] = drop.x;
+      positions[j + 1] = drop.y;
+      positions[j + 2] = drop.z;
+      positions[j + 3] = drop.x - slantPerUnit * len;
+      positions[j + 4] = drop.y + len;
+      positions[j + 5] = drop.z;
+    }
+    geometry.attributes.position.needsUpdate = true;
+  }
+  update(0);
+  return { lines, material, update };
+}
+
+// Rain puddle: irregular noise-masked patch with fresnel sky reflection and
+// specular glints from the two street lights, over ripple-ring-perturbed
+// normals so falling rain visibly stipples the surface.
+function makePuddleMaterial(seed) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uTime: { value: 0 },
+      uNight: { value: 0 },
+      uSeed: { value: seed },
+      uSkyColor: { value: new THREE.Color(0x33415e) },
+      uLampPos: { value: new THREE.Vector3() },
+      uLampColor: { value: new THREE.Color(0xffe6a3) },
+      uLampIntensity: { value: 0 },
+      uDoorPos: { value: new THREE.Vector3() },
+      uDoorColor: { value: new THREE.Color(0xfff0c0) },
+      uDoorIntensity: { value: 0 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      void main() {
+        vUv = uv;
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uNight;
+      uniform float uSeed;
+      uniform vec3 uSkyColor;
+      uniform vec3 uLampPos;
+      uniform vec3 uLampColor;
+      uniform float uLampIntensity;
+      uniform vec3 uDoorPos;
+      uniform vec3 uDoorColor;
+      uniform float uDoorIntensity;
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+
+      float puddleHash(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+
+      float puddleNoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(puddleHash(i), puddleHash(i + vec2(1.0, 0.0)), u.x),
+          mix(puddleHash(i + vec2(0.0, 1.0)), puddleHash(i + vec2(1.0, 1.0)), u.x),
+          u.y
+        );
+      }
+
+      void main() {
+        // Irregular shoreline: noise warps the blob radius.
+        vec2 c = vUv - 0.5;
+        float edgeNoise = puddleNoise(vUv * 3.0 + uSeed * 17.0) * 0.65 +
+          puddleNoise(vUv * 7.0 + uSeed * 9.0) * 0.35;
+        float radius = 0.42 + (edgeNoise - 0.5) * 0.2;
+        float mask = smoothstep(radius, radius - 0.09, length(c));
+        if (mask < 0.004) discard;
+
+        // Raindrop ripples: expanding rings, each respawning at a new random
+        // spot every cycle, fading as they widen.
+        vec2 grad = vec2(0.0);
+        for (int i = 0; i < 4; i++) {
+          float fi = float(i);
+          float cycle = uTime * (0.55 + 0.2 * puddleHash(vec2(fi, uSeed))) +
+            puddleHash(vec2(fi * 3.1, uSeed * 1.7));
+          float ph = fract(cycle);
+          float gen = floor(cycle);
+          vec2 center = vec2(
+            0.2 + 0.6 * puddleHash(vec2(fi + gen * 1.7, uSeed)),
+            0.2 + 0.6 * puddleHash(vec2(fi + gen * 2.3, uSeed + 4.2))
+          );
+          float dd = distance(vUv, center) + 1e-4;
+          float ring = ph * 0.4;
+          float band = smoothstep(0.09, 0.0, abs(dd - ring)) * (1.0 - ph);
+          grad += ((vUv - center) / dd) * cos((dd - ring) * 55.0) * band;
+        }
+        // Wind shiver across the whole surface.
+        float w1 = puddleNoise(vUv * 14.0 + vec2(uTime * 0.35, uSeed));
+        float w2 = puddleNoise(vUv * 14.0 + vec2(uSeed, uTime * 0.31));
+        grad += (vec2(w1, w2) - 0.5) * 0.5;
+
+        vec3 normal = normalize(vec3(-grad.x * 0.3, 1.0, -grad.y * 0.3));
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float ndv = clamp(dot(normal, viewDir), 0.0, 1.0);
+        float fres = 0.06 + 0.94 * pow(1.0 - ndv, 2.2);
+
+        // Deep water over dark asphalt, sky sheen at grazing angles.
+        vec3 col = mix(vec3(0.012, 0.016, 0.028), uSkyColor * 0.55, fres);
+
+        // Specular streaks from the two street lights off the rippled surface.
+        vec3 reflected = reflect(-viewDir, normal);
+        vec3 toLamp = uLampPos - vWorldPos;
+        float lampDist = length(toLamp);
+        float lampSpec = pow(max(dot(reflected, toLamp / lampDist), 0.0), 90.0) *
+          uLampIntensity / (1.0 + 0.25 * lampDist * lampDist);
+        vec3 toDoor = uDoorPos - vWorldPos;
+        float doorDist = length(toDoor);
+        float doorSpec = pow(max(dot(reflected, toDoor / doorDist), 0.0), 90.0) *
+          uDoorIntensity / (1.0 + 0.25 * doorDist * doorDist);
+        col += uLampColor * lampSpec * 2.4 + uDoorColor * doorSpec * 2.4;
+
+        gl_FragColor = vec4(col, mask * uNight * (0.62 + 0.38 * fres));
+      }
+    `,
+  });
+}
+
 export function buildEnvironment(scene, projects, categoryOrder, camera, renderer) {
   var layoutResult = buildModuleLayout(projects, categoryOrder);
   var sections = layoutResult.sections;
@@ -2180,14 +2504,20 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
 
   var floorY = layoutResult.floorY;
 
+  // buildEnvironment receives the responsive root group, not the Scene.
+  // The group is already attached when this runs, so walk up to the real
+  // scene — background, fog, and the global lights live there, not below us.
+  let rootScene = scene;
+  while (rootScene.parent) rootScene = rootScene.parent;
+
   // Retrieve global lights to drive transition
-  const ambientLight = scene.getObjectByName('global-ambient-light');
-  const hemiLight = scene.getObjectByName('global-hemi-light');
-  const keyLight = scene.getObjectByName('global-key-light');
+  const ambientLight = rootScene.getObjectByName('global-ambient-light');
+  const hemiLight = rootScene.getObjectByName('global-hemi-light');
+  const keyLight = rootScene.getObjectByName('global-key-light');
 
   // Pre-create color instances to prevent GC collection overhead in animation loop
   const dayBgColor = new THREE.Color(0xf2eee6);
-  const nightBgColor = new THREE.Color(0x060713);
+  const nightBgColor = new THREE.Color(0x020309);
 
   const dayAmbientColor = new THREE.Color(0xfff8ef);
   const nightAmbientColor = new THREE.Color(0x1a2436);
@@ -2201,8 +2531,6 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   const bulbOnColor = new THREE.Color(0xfff0c0);
   const bulbOffColor = new THREE.Color(0x333333);
 
-  const lanternOnColor = new THREE.Color(0xffe6a3);
-  const lanternOffColor = new THREE.Color(0x333333);
 
   const lastProjY = modules.length > 0 ? modules[modules.length - 1].worldY : 0;
   const transitionStart = lastProjY;
@@ -2468,62 +2796,190 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   laneStripe.position.set(0, floorY + roadH + 0.004 * streetScale, wallFrontZ + sidewalkD + roadD * 0.76);
   endingBrickGroup.add(laneStripe);
 
-  const lampGroup = new THREE.Group();
   const streetSideX = Math.max(-metrics.visibleWallWidth * 0.46, -4.8);
-  lampGroup.position.set(streetSideX, floorY + sidewalkH, wallFrontZ + sidewalkD * 0.6);
-  const lampPostMat = new THREE.MeshStandardMaterial({
-    color: 0x2c3e50,
-    roughness: 0.5,
-    metalness: 0.6,
+
+  const dumpsterGroup = new THREE.Group();
+  dumpsterGroup.position.set(streetSideX + 0.2 * streetScale, floorY + sidewalkH, wallFrontZ + sidewalkD * 0.42);
+  dumpsterGroup.scale.setScalar(streetScale);
+  dumpsterGroup.rotation.y = 0.07;
+  const dumpsterBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x2f5d43,
+    roughness: 0.62,
+    metalness: 0.35,
   });
-  const lampPoleHeight = Math.min(3.25 * streetScale, endingWallHeight - 0.55 * streetScale);
-  const lampBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14 * streetScale, 0.14 * streetScale, 0.32 * streetScale, 8),
-    lampPostMat
-  );
-  lampBase.position.y = 0.16 * streetScale;
-  lampGroup.add(lampBase);
-
-  const lampPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.034 * streetScale, 0.034 * streetScale, lampPoleHeight, 8),
-    lampPostMat
-  );
-  lampPole.position.y = 0.32 * streetScale + lampPoleHeight / 2;
-  lampGroup.add(lampPole);
-
-  const lampArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018 * streetScale, 0.018 * streetScale, 0.56 * streetScale, 6),
-    lampPostMat
-  );
-  lampArm.rotation.z = Math.PI / 2;
-  lampArm.position.set(0.28 * streetScale, 0.32 * streetScale + lampPoleHeight - 0.12 * streetScale, 0);
-  lampGroup.add(lampArm);
-
-  const lanternHousing = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07 * streetScale, 0.11 * streetScale, 0.22 * streetScale, 6),
-    lampPostMat
-  );
-  lanternHousing.position.set(0.56 * streetScale, 0.32 * streetScale + lampPoleHeight - 0.18 * streetScale, 0);
-  lampGroup.add(lanternHousing);
-
-  const lanternBulbMat = new THREE.MeshBasicMaterial({
-    color: 0xffe6a3,
+  const dumpsterLidMat = new THREE.MeshStandardMaterial({
+    color: 0x24452f,
+    roughness: 0.55,
+    metalness: 0.4,
   });
-  const lanternBulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.052 * streetScale, 6, 6),
-    lanternBulbMat
-  );
-  lanternBulb.position.set(0.56 * streetScale, 0.32 * streetScale + lampPoleHeight - 0.32 * streetScale, 0);
-  lampGroup.add(lanternBulb);
-  endingBrickGroup.add(lampGroup);
 
-  const lampLight = new THREE.PointLight(0xffe6a3, 1.8, 6.0, 1.3);
-  lampLight.position.set(
-    streetSideX + 0.56 * streetScale,
-    floorY + sidewalkH + 0.32 * streetScale + lampPoleHeight - 0.32 * streetScale,
-    wallFrontZ + sidewalkD * 0.6,
+  const dumpsterW = 1.5;
+  const dumpsterH = 0.78;
+  const dumpsterD = 0.66;
+  const dumpsterBody = new THREE.Mesh(
+    new THREE.BoxGeometry(dumpsterW, dumpsterH, dumpsterD),
+    dumpsterBodyMat
   );
-  endingBrickGroup.add(lampLight);
+  dumpsterBody.position.y = 0.09 + dumpsterH / 2;
+  dumpsterGroup.add(dumpsterBody);
+
+  const dumpsterRim = new THREE.Mesh(
+    new THREE.BoxGeometry(dumpsterW + 0.05, 0.055, dumpsterD + 0.05),
+    dumpsterLidMat
+  );
+  dumpsterRim.position.y = 0.09 + dumpsterH;
+  dumpsterGroup.add(dumpsterRim);
+
+  // Lid hinged at the back edge, propped slightly ajar.
+  const dumpsterLidPivot = new THREE.Group();
+  dumpsterLidPivot.position.set(0, 0.09 + dumpsterH + 0.055 / 2, -dumpsterD / 2);
+  dumpsterLidPivot.rotation.x = 0.2;
+  const dumpsterLid = new THREE.Mesh(
+    new THREE.BoxGeometry(dumpsterW + 0.03, 0.04, dumpsterD + 0.04),
+    dumpsterLidMat
+  );
+  dumpsterLid.position.z = (dumpsterD + 0.04) / 2;
+  dumpsterLidPivot.add(dumpsterLid);
+  dumpsterGroup.add(dumpsterLidPivot);
+
+  const dumpsterRibGeo = new THREE.BoxGeometry(0.07, dumpsterH - 0.12, 0.03);
+  const dumpsterRibL = new THREE.Mesh(dumpsterRibGeo, dumpsterLidMat);
+  dumpsterRibL.position.set(-dumpsterW * 0.24, 0.09 + dumpsterH / 2, dumpsterD / 2 + 0.012);
+  const dumpsterRibR = new THREE.Mesh(dumpsterRibGeo, dumpsterLidMat);
+  dumpsterRibR.position.set(dumpsterW * 0.24, 0.09 + dumpsterH / 2, dumpsterD / 2 + 0.012);
+  dumpsterGroup.add(dumpsterRibL, dumpsterRibR);
+
+  // Fork pockets on the ends.
+  const dumpsterPocketGeo = new THREE.BoxGeometry(0.05, 0.13, 0.34);
+  const dumpsterPocketL = new THREE.Mesh(dumpsterPocketGeo, dumpsterLidMat);
+  dumpsterPocketL.position.set(-dumpsterW / 2 - 0.025, 0.09 + dumpsterH * 0.42, 0);
+  const dumpsterPocketR = new THREE.Mesh(dumpsterPocketGeo, dumpsterLidMat);
+  dumpsterPocketR.position.set(dumpsterW / 2 + 0.025, 0.09 + dumpsterH * 0.42, 0);
+  dumpsterGroup.add(dumpsterPocketL, dumpsterPocketR);
+
+  const dumpsterWheelMat = new THREE.MeshStandardMaterial({
+    color: 0x141414,
+    roughness: 0.85,
+    metalness: 0.1,
+  });
+  const dumpsterWheelGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.05, 10);
+  for (let wx = -1; wx <= 1; wx += 2) {
+    for (let wz = -1; wz <= 1; wz += 2) {
+      const wheel = new THREE.Mesh(dumpsterWheelGeo, dumpsterWheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(wx * dumpsterW * 0.38, 0.045, wz * dumpsterD * 0.32);
+      dumpsterGroup.add(wheel);
+    }
+  }
+
+  // Trash bag slumped against the near end.
+  const trashBagMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a1e,
+    roughness: 0.35,
+    metalness: 0.05,
+  });
+  const trashBag = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), trashBagMat);
+  trashBag.scale.set(1, 0.78, 0.9);
+  trashBag.position.set(dumpsterW / 2 + 0.22, 0.15, dumpsterD * 0.22);
+  dumpsterGroup.add(trashBag);
+  endingBrickGroup.add(dumpsterGroup);
+
+  // --- Volumetric night atmosphere ---
+  const streetGroundY = floorY + sidewalkH;
+  const doorBeamTopY = fixtureY - 0.13 * streetScale;
+  const doorBeam = addVolumetricBeam(endingBrickGroup, {
+    color: 0xfff0c0,
+    x: 0,
+    z: wallFrontZ + 0.25 * streetScale,
+    topY: doorBeamTopY,
+    height: doorBeamTopY - (floorY + stepH),
+    topRadius: 0.05 * streetScale,
+    bottomRadius: 0.62 * streetScale,
+  });
+
+  const mistTexture = makeMistTexture();
+  const mistWidth = Math.max(metrics.visibleWallWidth * 1.35, 8);
+  const mistLayers = [];
+  // Size the fog banks against the camera's bottom-out height, not raw
+  // streetScale — on desktop the camera rests well above the floor, and
+  // banks hugging the ground would sit below the frustum entirely
+  // (especially the near layers, which are close to the camera).
+  const mistEyeSpan = Math.max(layoutResult.minY - streetGroundY, 1.2);
+  const mistSpecs = [
+    { z: wallFrontZ + sidewalkD * 0.35, h: 0.55, opacity: 0.16, drift: 0.5, phase: 0 },
+    { z: wallFrontZ + sidewalkD + roadD * 0.45, h: 0.75, opacity: 0.13, drift: 0.36, phase: 2.1 },
+    { z: wallFrontZ + sidewalkD + roadD * 0.9, h: 0.95, opacity: 0.1, drift: 0.27, phase: 4.2 },
+  ];
+  for (let mi = 0; mi < mistSpecs.length; mi++) {
+    const spec = mistSpecs[mi];
+    const mistH = spec.h * mistEyeSpan;
+    const mist = new THREE.Mesh(
+      new THREE.PlaneGeometry(mistWidth, mistH),
+      new THREE.MeshBasicMaterial({
+        map: mistTexture,
+        color: 0x91a7c9,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    mist.position.set(0, streetGroundY + mistH * 0.45, spec.z);
+    mist.renderOrder = 4;
+    mist.visible = false;
+    endingBrickGroup.add(mist);
+    mistLayers.push({ mesh: mist, baseOpacity: spec.opacity, drift: spec.drift, phase: spec.phase });
+  }
+
+  // Rain puddles on the sidewalk and road, biased toward the light pools so
+  // the reflections read.
+  const roadTopY = floorY + roadH - 0.018 * streetScale;
+  const puddleFarX = Math.min(metrics.visibleWallWidth * 0.34, 3.4);
+  const puddleSpecs = [
+    { x: streetSideX + 0.55 * streetScale, y: streetGroundY, z: wallFrontZ + sidewalkD * 0.5, w: 1.15, d: 0.8 },
+    { x: puddleFarX, y: streetGroundY, z: wallFrontZ + sidewalkD * 0.68, w: 0.72, d: 0.5 },
+    { x: openingW * 0.85, y: streetGroundY, z: wallFrontZ + sidewalkD * 0.3, w: 0.6, d: 0.42 },
+    { x: -1.15 * streetScale, y: roadTopY, z: wallFrontZ + sidewalkD + roadD * 0.42, w: 1.7, d: 1.0 },
+    { x: puddleFarX * 0.75, y: roadTopY, z: wallFrontZ + sidewalkD + roadD * 0.68, w: 1.15, d: 0.75 },
+  ];
+  const puddles = [];
+  for (let pi = 0; pi < puddleSpecs.length; pi++) {
+    const spec = puddleSpecs[pi];
+    const puddleMat = makePuddleMaterial(pi * 7.31 + 2.17);
+    puddleMat.uniforms.uDoorPos.value.copy(flickerLight.position);
+    const puddle = new THREE.Mesh(
+      new THREE.PlaneGeometry(spec.w * streetScale, spec.d * streetScale),
+      puddleMat,
+    );
+    puddle.rotation.x = -Math.PI / 2;
+    puddle.position.set(spec.x, spec.y + 0.006, spec.z);
+    puddle.renderOrder = 3;
+    puddle.visible = false;
+    endingBrickGroup.add(puddle);
+    puddles.push(puddle);
+  }
+
+  const rain = createRain(endingBrickGroup, {
+    count: 420,
+    minX: -Math.max(metrics.visibleWallWidth * 0.7, 4.5),
+    maxX: Math.max(metrics.visibleWallWidth * 0.7, 4.5),
+    minZ: wallFrontZ + 0.05,
+    maxZ: wallFrontZ + sidewalkD + roadD * 0.95,
+    floorY: streetGroundY,
+    height: endingWallHeight * 1.05,
+    speed: 7 * streetScale,
+    wind: 0.8 * streetScale,
+    streak: 0.22 * streetScale,
+  });
+
+  // Wet-street treatment: as night falls the ground darkens and turns glossy
+  // so the street lights sheen off it.
+  const dryRoadColor = new THREE.Color(0x1d2022);
+  const wetRoadColor = new THREE.Color(0x111417);
+  const drySidewalkColor = new THREE.Color(0xffffff);
+  const wetSidewalkColor = new THREE.Color(0x767c86);
+  const dryCurbColor = new THREE.Color(0xb6b4aa);
+  const wetCurbColor = new THREE.Color(0x686b70);
 
   const binGroup = new THREE.Group();
   const binX = Math.min(metrics.visibleWallWidth * 0.43, 4.8);
@@ -2568,7 +3024,7 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   const narrowTaxiLift = THREE.MathUtils.clamp((3.8 - metrics.visibleWallWidth) / 1.4, 0, 1);
   const taxiBaseY = floorY + roadH + THREE.MathUtils.lerp(0.08, 0.42, narrowTaxiLift) * taxiScale;
   const taxiTargetZ = wallFrontZ + sidewalkD + roadD * 0.05;
-  taxiGroup.position.set(taxiStartX, taxiBaseY - 0.12 * taxiScale, taxiTargetZ);
+  taxiGroup.position.set(taxiStartX, taxiBaseY, taxiTargetZ);
   endingBrickGroup.add(taxiGroup);
 
   const pigeons = [];
@@ -2602,16 +3058,61 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   let pigeonsFlying = false;
   let pigeonsFlightTimer = 0;
   let flickerTimer = 0;
-  // Taxi choreography state. The cab drives in and PARKS in front of the door
-  // at the bottom; scrolling back up releases a latched, time-based speed-off
-  // to the left that always completes. Everything rearms once the camera climbs
-  // back into the museum so the sequence replays.
-  let taxiExiting = false;
-  let taxiHasParked = false;
-  let taxiDriveOut = 0;   // 0..1 exit progress once latched
+  // Taxi choreography (GSAP timelines). Descending into the alley cues the cab
+  // to drive in on its own clock and brake to a park in front of the door;
+  // after the camera has bottomed out, scrolling back up releases a squat-and-
+  // launch speed-off to the left. Climbing back into the museum kills any
+  // running timeline and rearms the whole sequence.
+  let taxiState = 'offscreen'; // offscreen -> arriving -> parked -> exiting -> gone
+  let taxiTimeline = null;
+  let taxiInitialized = false;
   let taxiWheelSpin = 0;  // accumulated wheel roll angle (radians)
-  const TAXI_EXIT_TIME = 1.05;   // seconds to clear the left edge (speed-off)
+  let lastTaxiX = taxiStartX;
   const TAXI_PARK_RELEASE = 0.6; // scroll-up margin (world units) that releases the cab
+  // Cue the drive-in once the camera is 30% of the way down the night transition.
+  const taxiArriveTriggerY = transitionStart - Math.max(transitionStart - transitionEnd, 0.001) * 0.3;
+
+  function killTaxiTimeline() {
+    if (taxiTimeline) {
+      taxiTimeline.kill();
+      taxiTimeline = null;
+    }
+  }
+
+  function resetTaxi() {
+    killTaxiTimeline();
+    taxiState = 'offscreen';
+    hasBottomedOut = false;
+    taxiHasDeparted = false;
+    taxiGroup.position.x = taxiStartX;
+    taxiGroup.rotation.z = 0;
+    lastTaxiX = taxiStartX;
+  }
+
+  function startTaxiArrive() {
+    killTaxiTimeline();
+    taxiState = 'arriving';
+    taxiTimeline = gsap.timeline({ onComplete: function() { taxiState = 'parked'; } });
+    taxiTimeline
+      .to(taxiGroup.position, { x: taxiTargetX, duration: 2.6, ease: 'power3.out' }, 0)
+      // Brake dip as it pulls up (nose faces -x, so +z roll drops it), then
+      // the suspension springs back.
+      .to(taxiGroup.rotation, { z: 0.05, duration: 0.45, ease: 'sine.in' }, 1.7)
+      .to(taxiGroup.rotation, { z: 0, duration: 1.1, ease: 'elastic.out(1, 0.35)' }, 2.15);
+  }
+
+  function startTaxiExit() {
+    killTaxiTimeline();
+    taxiState = 'exiting';
+    taxiHasDeparted = true;
+    taxiTimeline = gsap.timeline({ onComplete: function() { taxiState = 'gone'; } });
+    taxiTimeline
+      // Throttle squat (nose up) as it launches, accelerating off-left from
+      // wherever it currently is, leveling out mid-run.
+      .to(taxiGroup.rotation, { z: -0.05, duration: 0.3, ease: 'power2.out' }, 0)
+      .to(taxiGroup.position, { x: taxiExitX, duration: 1.5, ease: 'power2.in' }, 0.1)
+      .to(taxiGroup.rotation, { z: 0, duration: 0.65, ease: 'sine.out' }, 1.0);
+  }
 
   function triggerPigeonFlyAway() {
     if (pigeonsFlying) return;
@@ -2787,61 +3288,65 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
       // Light up the cab (headlights, tail lights, lit ad box) as night falls.
       if (taxi.setNightLevel) taxi.setNightLevel(1 - t);
 
-      // --- Taxi choreography -----------------------------------------
-      // Drive IN from the right as the camera descends, PARK in front of the
-      // door at the bottom, then SPEED OFF to the left when the user scrolls
-      // back up. Climbing into the museum rearms the whole sequence.
-      if (cameraY > transitionStart) {
-        taxiExiting = false;
-        taxiDriveOut = 0;
-        taxiHasParked = false;
+      // --- Taxi choreography (GSAP) -----------------------------------
+      // First update after a (re)build: derive the cab's pose from where the
+      // camera already is, instead of replaying the arrival on every resize.
+      if (!taxiInitialized) {
+        taxiInitialized = true;
+        if (cameraY <= transitionStart) {
+          if (taxiHasDeparted) {
+            taxiState = 'gone';
+            taxiGroup.position.x = taxiExitX;
+          } else if (cameraY < taxiArriveTriggerY) {
+            taxiState = 'parked';
+            taxiGroup.position.x = taxiTargetX;
+          }
+          lastTaxiX = taxiGroup.position.x;
+          if (Math.abs(cameraY - layoutResult.minY) < 0.18) {
+            hasBottomedOut = true;
+          }
+        }
       }
 
-      // Drive-in is motivated by scroll proximity to the bottom; dividing by
-      // 0.85 lets the cab settle at center just before the very bottom so the
-      // park reads clearly.
-      const driveSpan = Math.max(transitionStart - transitionEnd, 0.001);
-      const driveInRaw = THREE.MathUtils.clamp((transitionStart - cameraY) / driveSpan, 0, 1);
-      const driveIn = THREE.MathUtils.clamp(driveInRaw / 0.85, 0, 1);
+      // The timelines own position.x and rotation.z; this block only decides
+      // WHEN they run and keeps the procedural bob/wheel-spin layered on top.
+      if (cameraY > transitionStart) {
+        // Climbing back into the museum rearms the whole sequence.
+        if (taxiState !== 'offscreen') resetTaxi();
+      } else if (taxiState === 'offscreen' && cameraY < taxiArriveTriggerY) {
+        // Descending into the alley cues the cab to drive in and park.
+        startTaxiArrive();
+      }
 
-      // Reaching the bottom parks the cab in front of the door and scatters the
-      // pigeons (once per arrival).
-      if (Math.abs(cameraY - layoutResult.minY) < 0.18 && !taxiHasParked) {
-        taxiHasParked = true;
+      // Reaching the bottom scatters the pigeons (once per arrival).
+      if (Math.abs(cameraY - layoutResult.minY) < 0.18 && !hasBottomedOut) {
+        hasBottomedOut = true;
         triggerPigeonFlyAway();
       }
 
-      // Having parked, scrolling back up past a small margin releases the cab to
-      // speed off left. The exit latches + is time-based so it always clears and
-      // never reverses on a downward nudge.
-      if (taxiHasParked && !taxiExiting && cameraY > layoutResult.minY + TAXI_PARK_RELEASE) {
-        taxiExiting = true;
+      // After the camera has bottomed out, scrolling up past a small margin
+      // releases the cab to speed off left. Also fires mid-arrival — the exit
+      // tween accelerates from wherever the cab currently is.
+      if (
+        hasBottomedOut &&
+        (taxiState === 'parked' || taxiState === 'arriving') &&
+        cameraY > layoutResult.minY + TAXI_PARK_RELEASE
+      ) {
+        startTaxiExit();
       }
-      if (taxiExiting) {
-        taxiDriveOut = Math.min(1, taxiDriveOut + dt / TAXI_EXIT_TIME);
-      }
 
-      // Smoothstep eases for each phase.
-      const easeIn = driveIn * driveIn * (3 - 2 * driveIn);
-      const easeOut = taxiDriveOut * taxiDriveOut * (3 - 2 * taxiDriveOut);
-
-      // X is continuous across the handoff: at the release moment easeIn is ~1
-      // (cab at taxiTargetX) and the exit lerp also starts from taxiTargetX.
-      const prevTaxiX = taxiGroup.position.x;
-      taxiGroup.position.x = taxiExiting
-        ? THREE.MathUtils.lerp(taxiTargetX, taxiExitX, easeOut)
-        : THREE.MathUtils.lerp(taxiStartX, taxiTargetX, easeIn);
-
-      // Settle down onto the road as it arrives; keep a faint driving bob.
-      const settle = taxiExiting ? 1 : easeIn;
-      const drivingBob = Math.sin(flickerTimer * 6.2) * 0.012 * taxiScale;
-      taxiGroup.position.y = taxiBaseY - (1 - settle) * 0.12 * taxiScale + Math.sin(settle * Math.PI) * 0.03 * taxiScale + drivingBob;
-      taxiGroup.rotation.y = Math.sin(settle * Math.PI) * 0.03;
+      // Suspension bob scales with how fast the cab is actually moving.
+      const taxiTravel = lastTaxiX - taxiGroup.position.x;
+      lastTaxiX = taxiGroup.position.x;
+      const taxiSpeed = Math.abs(taxiTravel) / Math.max(dt, 0.001);
+      const taxiMotion = Math.min(1, taxiSpeed / (2.4 * taxiScale));
+      taxiGroup.position.y = taxiBaseY +
+        Math.sin(flickerTimer * 6.2) * 0.012 * taxiScale * (0.35 + 0.65 * taxiMotion) +
+        taxiMotion * 0.02 * taxiScale;
 
       // Spin the wheel groups (axle along local Z) from the actual frame-to-
       // frame travel so the speed reads honestly — fast on the way in/out,
       // still at the pause. Tire radius is 0.25 in local space.
-      const taxiTravel = prevTaxiX - taxiGroup.position.x;
       taxiWheelSpin += taxiTravel / (0.25 * taxiScale);
       if (taxi.wheels) {
         for (let wi = 0; wi < taxi.wheels.length; wi++) {
@@ -2850,20 +3355,20 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
       }
 
       // Transition background & fog colors
-      if (scene.background && scene.background.isColor) {
-        scene.background.lerpColors(nightBgColor, dayBgColor, t);
+      if (rootScene.background && rootScene.background.isColor) {
+        rootScene.background.lerpColors(nightBgColor, dayBgColor, t);
       }
-      if (scene.fog && scene.fog.color && scene.fog.color.isColor) {
-        scene.fog.color.lerpColors(nightBgColor, dayBgColor, t);
+      if (rootScene.fog && rootScene.fog.color && rootScene.fog.color.isColor) {
+        rootScene.fog.color.lerpColors(nightBgColor, dayBgColor, t);
       }
 
       // Transition global lights
       if (ambientLight) {
-        ambientLight.intensity = THREE.MathUtils.lerp(0.04, 0.68, t);
+        ambientLight.intensity = THREE.MathUtils.lerp(0.015, 0.68, t);
         ambientLight.color.lerpColors(nightAmbientColor, dayAmbientColor, t);
       }
       if (hemiLight) {
-        hemiLight.intensity = THREE.MathUtils.lerp(0.02, 0.48, t);
+        hemiLight.intensity = THREE.MathUtils.lerp(0.008, 0.48, t);
         hemiLight.color.lerpColors(nightHemiSkyColor, dayHemiSkyColor, t);
         hemiLight.groundColor.lerpColors(nightHemiGroundColor, dayHemiGroundColor, t);
       }
@@ -2873,8 +3378,54 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
 
       // Scale street lights to avoid bleeding into the museum
       flickerLight.intensity = currentIntensity * (1 - t);
-      if (lampLight) {
-        lampLight.intensity = 1.8 * (1 - t);
+
+      // Volumetric atmosphere fades in with the night factor. The door beam
+      // follows the fixture's flicker so the shaft dies with the bulb.
+      const night = 1 - t;
+      const atmosphereOn = night > 0.02;
+      doorBeam.mesh.visible = atmosphereOn;
+      if (atmosphereOn) {
+        doorBeam.material.uniforms.uIntensity.value = 0.32 * night * (currentIntensity / baseIntensity);
+        doorBeam.material.uniforms.uTime.value = flickerTimer;
+      }
+      for (let mi = 0; mi < mistLayers.length; mi++) {
+        const layer = mistLayers[mi];
+        layer.mesh.visible = atmosphereOn;
+        if (atmosphereOn) {
+          layer.mesh.material.opacity = layer.baseOpacity * night;
+          layer.mesh.position.x = Math.sin(flickerTimer * layer.drift * 0.12 + layer.phase) * 0.6;
+        }
+      }
+
+      // Rain and puddles live in the same night window.
+      rain.lines.visible = atmosphereOn;
+      if (atmosphereOn) {
+        rain.material.opacity = 0.3 * night;
+        rain.update(dt);
+      }
+      for (let pi = 0; pi < puddles.length; pi++) {
+        const puddle = puddles[pi];
+        puddle.visible = atmosphereOn;
+        if (atmosphereOn) {
+          const u = puddle.material.uniforms;
+          u.uTime.value = flickerTimer;
+          u.uNight.value = night;
+          u.uDoorIntensity.value = flickerLight.intensity;
+        }
+      }
+
+      // Wet-street sheen: darker, glossier ground the deeper into night.
+      roadMat.color.lerpColors(wetRoadColor, dryRoadColor, t);
+      roadMat.roughness = THREE.MathUtils.lerp(0.32, 0.92, t);
+      sidewalkMat.color.lerpColors(wetSidewalkColor, drySidewalkColor, t);
+      sidewalkMat.roughness = THREE.MathUtils.lerp(0.42, 0.85, t);
+      curbMat.color.lerpColors(wetCurbColor, dryCurbColor, t);
+      curbMat.roughness = THREE.MathUtils.lerp(0.45, 0.74, t);
+
+      // Night air is hazier: pull the fog planes in as the museum lights die.
+      if (rootScene.fog) {
+        rootScene.fog.near = THREE.MathUtils.lerp(7.5, 20, t);
+        rootScene.fog.far = THREE.MathUtils.lerp(30, 62, t);
       }
 
       // Update bulb material colors (glowing effect)
@@ -2883,10 +3434,6 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
       } else {
         bulbMat.color.lerpColors(bulbOnColor, bulbOffColor, t);
       }
-      if (lanternBulbMat) {
-        lanternBulbMat.color.lerpColors(lanternOnColor, lanternOffColor, t);
-      }
-
       // Synchronize flicker light and lamp light properties to all pigeon materials
       pigeons.forEach((pigeon) => {
         if (pigeon.material && pigeon.material.uniforms) {
@@ -2899,14 +3446,6 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
             flickerLight.color.b * flickerLight.intensity
           );
 
-          if (lampLight) {
-            pigeon.material.uniforms.uWorldLampLightPos.value.copy(lampLight.position);
-            pigeon.material.uniforms.uLampLightColor.value.set(
-              lampLight.color.r * lampLight.intensity,
-              lampLight.color.g * lampLight.intensity,
-              lampLight.color.b * lampLight.intensity
-            );
-          }
         }
       });
 
@@ -3039,6 +3578,9 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
       }
     },
     dispose: function() {
+      // Kill any running taxi timeline first — rebuildScene creates a new
+      // taxi, and a live tween must not keep driving the detached one.
+      killTaxiTimeline();
       window.removeEventListener('mousemove', onWindowPointerMove);
       window.removeEventListener('click', onWindowClick);
     }
