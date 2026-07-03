@@ -2582,12 +2582,18 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   const brickMat = makeBrickWallMaterial(renderer);
 
   const streetScale = THREE.MathUtils.clamp(endingWallHeight / 4.8, 0.58, 1.0);
-  const openingW = THREE.MathUtils.clamp(
-    metrics.visibleWallWidth * 0.30,
-    1.2 * streetScale,
-    2.1 * streetScale,
-  );
   const doorH = endingWallHeight * 0.72;
+  // The opening width used to key off visibleWallWidth alone, which shrinks with
+  // aspect ratio: on narrow/portrait screens the camera pulls back so the wall
+  // (and doorH) grow tall while the width-derived opening collapsed to its 1.2
+  // floor, leaving a thin slit. Floor the opening against doorH too so the portal
+  // keeps a sane width:height proportion, and cap it against the visible width so
+  // it never swallows the wall on ultra-narrow phones.
+  const openingW = THREE.MathUtils.clamp(
+    Math.max(metrics.visibleWallWidth * 0.30, doorH * 0.34),
+    1.2 * streetScale,
+    Math.min(2.1 * streetScale, metrics.visibleWallWidth * 0.5),
+  );
   const leftWallW = (WALL_WIDTH - openingW) / 2;
   const leftWall = new THREE.Mesh(
     new THREE.BoxGeometry(leftWallW, endingWallHeight, WALL_THICKNESS),
