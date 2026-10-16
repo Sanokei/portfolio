@@ -16,8 +16,6 @@ import { initPlaqueFocus } from './plaqueFocus.js';
 import { getLayoutMetrics, buildModuleLayout } from './layout.js?v=ending-revamp';
 
 const INTRO_TIMING = {
-  loadingFadeMs: 750,
-  postLoadingDelayMs: 300,
   letterboxMs: 1550,
   promptDelayMs: 120,
 };
@@ -40,16 +38,6 @@ async function main() {
   let lastProjectY = 0;
   let minScrollY = 0;
 
-  // Loading progress bar helper.
-  const loadingBar = document.getElementById('loading-bar-fill');
-
-  function updateLoadingProgress(done, total) {
-    if (loadingBar) {
-      const pct = total > 0 ? (done / total) * 100 : 100;
-      loadingBar.style.width = `${pct.toFixed(1)}%`;
-    }
-  }
-
   async function rebuildScene(initial = false) {
     const token = ++buildToken;
     const nextRoot = new THREE.Group();
@@ -57,7 +45,7 @@ async function main() {
     nextRoot.visible = false;
     scene.add(nextRoot);
 
-    const { cavityData } = await buildWall(nextRoot, projects, categoryOrder, updateLoadingProgress);
+    const { cavityData } = await buildWall(nextRoot, projects, categoryOrder);
     if (token !== buildToken) {
       scene.remove(nextRoot);
       disposeObjectGeometries(nextRoot);
@@ -123,7 +111,6 @@ async function main() {
 
   await rebuildScene(true);
 
-  const loadingEl = document.getElementById('loading-screen');
   const letterboxBars = document.getElementById('letterbox-bars');
   const scrollPrompt = document.getElementById('scroll-prompt');
 
@@ -153,9 +140,7 @@ async function main() {
   }
 
   function revealMuseum() {
-    const loadingFadeMs = loadingEl ? INTRO_TIMING.loadingFadeMs : 0;
-    const postLoadingDelayMs = loadingEl ? INTRO_TIMING.postLoadingDelayMs : 0;
-    const letterboxStartMs = loadingFadeMs + postLoadingDelayMs;
+    const letterboxStartMs = 0;
     let promptQueued = false;
 
     function queuePrompt() {
@@ -165,7 +150,6 @@ async function main() {
       letterboxBars?.classList.add('no-transition');
     }
 
-    if (loadingEl) loadingEl.classList.add('hidden');
     if (letterboxBars) {
       const bottomBar = letterboxBars.querySelector('.letterbox-bar-bottom');
       bottomBar?.addEventListener('transitionend', (event) => {

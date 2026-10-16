@@ -1,6 +1,7 @@
 // environment.js - Vertical white museum wall labels and overhead lamps.
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { gsap } from 'gsap';
 import {
   buildModuleLayout,
@@ -458,6 +459,23 @@ function addWallBounds(scene) {
   scene.add(left, right);
 }
 
+// Shared cache for the picture-light GLB (models/picture-light.glb, CC0).
+// Model: bar along X, origin at bar center, wall side -Z, 1 unit = 1 world unit.
+var pictureLightGLB = null;
+var pictureLightGLBPromise = null;
+function getPictureLightGLB() {
+  if (pictureLightGLB) return Promise.resolve(pictureLightGLB);
+  if (!pictureLightGLBPromise) {
+    pictureLightGLBPromise = new Promise(function (resolve, reject) {
+      new GLTFLoader().load('models/picture-light.glb', function (gltf) {
+        pictureLightGLB = gltf.scene;
+        resolve(pictureLightGLB);
+      }, undefined, reject);
+    });
+  }
+  return pictureLightGLBPromise;
+}
+
 function addLongLamp(scene, opts) {
   var name = opts.name;
   var x = opts.x;
@@ -475,31 +493,22 @@ function addLongLamp(scene, opts) {
   var mountY = barY + 0.27 * scale;
   var lampWidth = width * scale;
 
-  var backplate = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * scale, 0.12 * scale, 0.045, 28), lampMaterial);
-  backplate.rotation.x = Math.PI / 2;
-  backplate.position.set(x, mountY, wallZ + 0.055);
-  group.add(backplate);
-
-  var armCurve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(x, mountY, wallZ + 0.07),
-    new THREE.Vector3(x, mountY + 0.02 * scale, wallZ + 0.32 * scale),
-    new THREE.Vector3(x, barY, wallZ + 0.38 * scale),
-  );
-  var arm = new THREE.Mesh(new THREE.TubeGeometry(armCurve, 24, 0.026 * scale, 12), lampMaterial);
-  group.add(arm);
-
-  var housing = new THREE.Mesh(new THREE.BoxGeometry(lampWidth, 0.09 * scale, 0.1 * scale), lampMaterial);
-  housing.position.set(x, barY, wallZ + 0.42 * scale);
-  group.add(housing);
-
-  var lightBar = new THREE.Mesh(new THREE.BoxGeometry(lampWidth * 0.86, 0.035 * scale, 0.035 * scale), lampBarMaterial);
-  lightBar.position.set(x, barY - 0.05 * scale, wallZ + 0.45 * scale);
-  group.add(lightBar);
+  // Picture-light GLB replaces the primitive geometry. The model is 0.804 wide;
+  // scale the holder so it matches the requested lampWidth. Async load pops in
+  // gracefully once fetched (shared cache, one network request total).
+  var lampHolder = new THREE.Group();
+  lampHolder.position.set(x, barY, wallZ + 0.42 * scale);
+  var holderScale = scale * (lampWidth / 0.804);
+  lampHolder.scale.set(holderScale, holderScale, holderScale);
+  group.add(lampHolder);
+  getPictureLightGLB().then(function (lampScene) {
+    lampHolder.add(lampScene.clone());
+  });
 
   var light = new THREE.PointLight(0xffd69a, intensity * scale, range * scale, 1.7);
-  light.position.copy(lightBar.position);
+  light.position.set(0, -0.05, 0.01);
   light.visible = false;
-  group.add(light);
+  lampHolder.add(light);
 
   scene.add(group);
   // The `range` on the returned object is the *visibility* window
@@ -969,7 +978,13 @@ function makeBrickWallMaterial(renderer) {
       float brickHeightField(vec2 uv, out float body, out float edgeDist) {
         vec2 tile = uv * vec2(7.0, 22.0);
         float row = floor(tile.y);
-        tile.x += mod(abs(row), 2.0) * 0.5;
+        // Row-parity compensation for flipY: the canvas albedo texture is
+        // painted y-down and uploaded with flipY=true, so at any world height
+        // its row parity is the OPPOSITE of this field's. Shifting even rows
+        // here (instead of odd) makes the relief joints coincide with the
+        // texture joints -> true running bond; without this the two layers
+        // interleave into vertical columns (stack-bond look).
+        tile.x += mod(abs(row) + 1.0, 2.0) * 0.5;
         vec2 cell = floor(tile);
         vec2 p = fract(tile) - 0.5;
 
@@ -2160,6 +2175,138 @@ function createTaxi(scale = 1) {
   return { group, clickableMeshes, wheels, setNightLevel };
 }
 
+// Spray-paint style attribution decal for the CC-BY-NC-4.0 taxi model
+// (Mateusz Woliński). Canvas-generated street art: bold handstyle lettering
+// with outline, drop shadow, drips and overspray — meant to read as graffiti
+// on the brick wall, not a museum label.
+function makeGraffitiCreditTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 384;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  function speckle(cx, cy, r, color, n, alpha) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.pow(Math.random(), 0.6) * r;
+      const x = cx + Math.cos(a) * d;
+      const y = cy + Math.sin(a) * d * 0.7;
+      const s = 1 + Math.random() * 3.2;
+      ctx.globalAlpha = alpha * (0.35 + Math.random() * 0.65);
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drips(x, yTop, color, spread) {
+    const n = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const dx = x + (Math.random() - 0.5) * spread;
+      const len = 12 + Math.random() * 44;
+      const w = 2.5 + Math.random() * 3.5;
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = color;
+      ctx.fillRect(dx - w / 2, yTop, w, len);
+      ctx.beginPath();
+      ctx.arc(dx, yTop + len, w / 2, 0, Math.PI);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Draws one line of graffiti: optional solid drop shadow offset first,
+  // then per-letter fill + outline with small rotation/offset jitter for a
+  // handstyle feel. Auto-shrinks to fit maxW.
+  function graffitiLine(text, cx, cy, fontPx, fill, outline, opts = {}) {
+    const maxW = opts.maxW || W * 0.92;
+    ctx.save();
+    ctx.font = `900 ${fontPx}px "Arial Black", Arial, sans-serif`;
+    const widths = [...text].map((ch) => ctx.measureText(ch).width);
+    const total = widths.reduce((a, b) => a + b, 0);
+    const s = Math.min(1, maxW / total);
+    ctx.translate(cx, cy);
+    ctx.rotate(opts.slant || 0);
+    ctx.scale(s, s);
+    const jitter = opts.jitter == null ? fontPx * 0.06 : opts.jitter;
+    let x = -total / 2;
+
+    const drawPass = (fillStyle, strokeStyle, dx, dy) => {
+      let px = x;
+      [...text].forEach((ch, i) => {
+        ctx.save();
+        ctx.translate(px + widths[i] / 2 + dx + (Math.random() - 0.5) * jitter,
+                      dy + (Math.random() - 0.5) * jitter);
+        ctx.rotate((Math.random() - 0.5) * 0.1);
+        if (strokeStyle) {
+          ctx.lineWidth = fontPx * 0.17;
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = strokeStyle;
+          ctx.strokeText(ch, 0, 0);
+        }
+        ctx.fillStyle = fillStyle;
+        ctx.fillText(ch, 0, 0);
+        ctx.restore();
+        px += widths[i];
+      });
+    };
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (opts.shadow) {
+      drawPass(opts.shadow, null, fontPx * 0.09, fontPx * 0.1);
+    }
+    drawPass(fill, outline, 0, 0);
+    ctx.restore();
+    return { left: cx - (total * s) / 2, right: cx + (total * s) / 2,
+             top: cy - fontPx * 0.62 * s, bottom: cy + fontPx * 0.66 * s };
+  }
+
+  // Soft overspray halo behind the lettering so it sits in the wall.
+  const halo = ctx.createRadialGradient(W / 2, H * 0.42, 40, W / 2, H * 0.42, W * 0.48);
+  halo.addColorStop(0, 'rgba(20,16,14,0.28)');
+  halo.addColorStop(1, 'rgba(20,16,14,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, W, H);
+
+  // Main credit line: off-white fill, black outline, hot-pink shadow.
+  const main = graffitiLine('Taxi model: Mateusz Woliński', W / 2, H * 0.36, 96,
+    '#f2ede0', '#14100c', { shadow: '#d63b7f', slant: -0.025, jitter: 7 });
+  // License line: taxi-yellow fill, black outline, smaller.
+  const sub = graffitiLine('CC-BY-NC-4.0', W / 2, H * 0.72, 58,
+    '#ffd23f', '#14100c', { shadow: '#d63b7f', slant: -0.015, jitter: 4 });
+
+  // Paint drips running down off the lettering.
+  drips(main.left + (main.right - main.left) * 0.18, main.bottom - 6, '#f2ede0', 30);
+  drips(main.left + (main.right - main.left) * 0.62, main.bottom - 4, '#14100c', 24);
+  drips(main.left + (main.right - main.left) * 0.85, main.bottom - 8, '#d63b7f', 20);
+  drips(sub.left + (sub.right - sub.left) * 0.3, sub.bottom - 4, '#ffd23f', 18);
+
+  // Overspray speckles around the piece.
+  speckle(W / 2, H * 0.42, W * 0.46, '#f2ede0', 130, 0.5);
+  speckle(W / 2, H * 0.42, W * 0.4, '#d63b7f', 70, 0.45);
+  speckle(W / 2, H * 0.75, W * 0.3, '#ffd23f', 50, 0.4);
+
+  // Underline swoosh flourish.
+  ctx.save();
+  ctx.strokeStyle = '#d63b7f';
+  ctx.lineWidth = 9;
+  ctx.lineCap = 'round';
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(sub.left - 30, sub.bottom + 26);
+  ctx.quadraticCurveTo(W / 2, sub.bottom + 52, sub.right + 40, sub.bottom + 14);
+  ctx.stroke();
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
 export function buildFloorAndBaseboard(scene, metrics, floorY = -114) {
   const wallZ = metrics.wallZ;
 
@@ -2609,6 +2756,42 @@ export function buildEnvironment(scene, projects, categoryOrder, camera, rendere
   );
   rightWall.position.set(WALL_WIDTH / 2 - rightWallW / 2, floorY + endingWallHeight / 2, wallZ);
   endingBrickGroup.add(rightWall);
+
+  // Graffiti attribution for the CC-BY-NC-4.0 taxi model (Mateusz Woliński),
+  // spray-painted on the LEFT brick wall — the taxi parks right of center,
+  // so the left wall stays unobstructed. Sits between the doorway and the
+  // parked cab, at eye level. Built here inside buildEnvironment so it is
+  // recreated on every rebuildScene along with the rest of the
+  // ending-brick section.
+  const graffitiTex = makeGraffitiCreditTexture();
+  const graffitiW = 1.65;
+  const graffitiH = graffitiW * (384 / 1024);
+  const graffitiDecal = new THREE.Mesh(
+    new THREE.PlaneGeometry(graffitiW, graffitiH),
+    new THREE.MeshStandardMaterial({
+      map: graffitiTex,
+      transparent: true,
+      roughness: 0.95,
+      metalness: 0.0,
+      depthWrite: false,
+      // Slight self-illumination so the paint reads in the night lighting.
+      emissive: new THREE.Color(0xffffff),
+      emissiveMap: graffitiTex,
+      emissiveIntensity: 0.45,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    })
+  );
+  // Shifted right of the original placement so the full credit line stays
+  // comfortably in frame from the default camera (was clipped at frame left).
+  graffitiDecal.position.set(
+    -openingW / 2 - 1.05 * streetScale,
+    floorY + 2.2 * streetScale,
+    wallFrontZ + 0.02
+  );
+  graffitiDecal.renderOrder = 2;
+  endingBrickGroup.add(graffitiDecal);
 
   const headerH = endingWallHeight - doorH;
   if (headerH > 0.05) {

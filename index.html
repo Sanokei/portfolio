@@ -8,46 +8,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Great+Vibes&family=Pinyon+Script&family=Playfair+Display+SC:wght@900&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
   <style>
-    html:not(.loading-font-ready) .loading-title { opacity: 0; }
-    #loading-screen {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      background: #0d2418;
-      z-index: 1000;
-    }
     #scroll-prompt {
       position: fixed;
       pointer-events: none;
     }
     #scroll-prompt.scroll-prompt-hidden { opacity: 0; }
   </style>
-  <script>
-    if (!document.fonts) {
-      document.documentElement.classList.add('loading-font-ready');
-    } else {
-      document.fonts.load('400 64px "Pinyon Script"').then(() => {
-        document.documentElement.classList.add('loading-font-ready');
-      }).catch(() => {
-        document.documentElement.classList.add('loading-font-ready');
-      });
-    }
-  </script>
   <link rel="stylesheet" href="./main.css?v=minimal-loader">
 </head>
 <body>
-  <!-- Loading intro -->
-  <div id="loading-screen" role="status" aria-live="polite" aria-label="Loading the museum">
-    <div class="loading-panel">
-      <div class="loading-title">Loading...</div>
-      <div class="loading-bar" aria-hidden="true">
-        <div id="loading-bar-fill"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cinematic bars arrive after loading fades -->
+  <!-- Cinematic bars arrive after the scene builds -->
   <div id="letterbox-bars" aria-hidden="true">
     <div class="letterbox-bar letterbox-bar-top"></div>
     <div class="letterbox-bar letterbox-bar-bottom"></div>
