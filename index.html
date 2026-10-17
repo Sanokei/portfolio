@@ -8,6 +8,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Great+Vibes&family=Pinyon+Script&family=Playfair+Display+SC:wght@900&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
   <style>
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #0d2418;
+      z-index: 1000;
+      transition: opacity 600ms ease;
+    }
+    #loading-screen.loading-done { opacity: 0; pointer-events: none; }
+    .loading-inner { text-align: center; }
+    .loading-title {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 28px;
+      letter-spacing: 0.35em;
+      text-indent: 0.35em;
+      color: #f6f3ed;
+      animation: loading-pulse 1.6s ease-in-out infinite;
+    }
+    .loading-sub {
+      margin-top: 10px;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-indent: 0.2em;
+      color: rgba(246, 243, 237, 0.55);
+    }
+    @keyframes loading-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
     #scroll-prompt {
       position: fixed;
       pointer-events: none;
@@ -17,6 +45,14 @@
   <link rel="stylesheet" href="./main.css?v=minimal-loader">
 </head>
 <body>
+  <!-- Minimal loading screen: paints instantly, fades when the scene is ready -->
+  <div id="loading-screen" role="status" aria-label="Loading the museum">
+    <div class="loading-inner">
+      <div class="loading-title">SANO</div>
+      <div class="loading-sub">preparing the gallery</div>
+    </div>
+  </div>
+
   <!-- Cinematic bars arrive after the scene builds -->
   <div id="letterbox-bars" aria-hidden="true">
     <div class="letterbox-bar letterbox-bar-top"></div>

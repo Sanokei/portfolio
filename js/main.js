@@ -111,6 +111,13 @@ async function main() {
 
   await rebuildScene(true);
 
+  // Fade out the loading screen now that the first frame is ready.
+  const loadingEl = document.getElementById('loading-screen');
+  if (loadingEl) {
+    loadingEl.classList.add('loading-done');
+    setTimeout(() => loadingEl.remove(), 700);
+  }
+
   const letterboxBars = document.getElementById('letterbox-bars');
   const scrollPrompt = document.getElementById('scroll-prompt');
 

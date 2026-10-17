@@ -1,2 +1,11 @@
 node_modules/
 .superpowers/
+
+# QA scratch, model sources, and per-iteration renders stay local.
+.qa/
+source/
+models/door/
+models/pigeon/
+models/taxi/
+models/ref/
+# Top-level models/*.glb (shipped assets) and PROVENANCE.md stay tracked.
