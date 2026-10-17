@@ -13,6 +13,42 @@
 export const projects = [
   // ── GAMES ──────────────────────────────────────────────
   {
+    id: 23,
+    name: 'Bellboy Busters',
+    category: 'Games',
+    year: 2026,
+    subtitle: 'Video Game, Multiplayer, Platformer',
+    description:
+      'A 2D multiplayer deathrun-style platformer: you are a fish working at a hotel, ' +
+      'but something is living in its walls. Grab some friends and reach the ghost — ' +
+      'if you can make it there. Made in two weeks for the Comfy Jam Autumn 2026.',
+    tags: ['Development', 'Multiplayer', 'Game Jam'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/bellboybusters', icon: 'itchio' },
+    ],
+    assets: [
+      { type: 'image', src: 'img/bellboy-busters.webp' },
+    ],
+  },
+  {
+    id: 24,
+    name: 'Chopline',
+    category: 'Games',
+    year: 2026,
+    subtitle: 'Minecraft Server, Rhythm MMO',
+    description:
+      'A rhythm MMO inside Minecraft: every tree has a song, and felling one means ' +
+      'playing it — strip the bark, strike on the beat, and carry the timber home. ' +
+      'Live at play.chopline.net (Java 1.12–1.21, resource pack required).',
+    tags: ['Development', 'Multiplayer', 'Game Design'],
+    links: [
+      { label: 'Website', url: 'https://chopline.net', icon: 'web' },
+    ],
+    assets: [
+      { type: 'image', src: 'img/chopline.webp' },
+    ],
+  },
+  {
     id: 17,
     name: 'We Mice',
     category: 'Games',
@@ -48,42 +84,6 @@ export const projects = [
       { type: 'video', src: 'img/handjob-truck.mp4' },
       { type: 'image', src: 'img/handjob-table.webp' },
       { type: 'video', src: 'img/handjob-heist.mp4' },
-    ],
-  },
-  {
-    id: 23,
-    name: 'Bellboy Busters',
-    category: 'Games',
-    year: 2026,
-    subtitle: 'Video Game, Multiplayer, Platformer',
-    description:
-      'A 2D multiplayer deathrun-style platformer: you are a fish working at a hotel, ' +
-      'but something is living in its walls. Grab some friends and reach the ghost — ' +
-      'if you can make it there. Made in two weeks for the Comfy Jam Autumn 2026.',
-    tags: ['Development', 'Multiplayer', 'Game Jam'],
-    links: [
-      { label: 'itch.io', url: 'https://sanokei.itch.io/bellboybusters', icon: 'itchio' },
-    ],
-    assets: [
-      { type: 'image', src: 'img/bellboy-busters.webp' },
-    ],
-  },
-  {
-    id: 24,
-    name: 'Chopline',
-    category: 'Games',
-    year: 2026,
-    subtitle: 'Minecraft Server, Rhythm MMO',
-    description:
-      'A rhythm MMO inside Minecraft: every tree has a song, and felling one means ' +
-      'playing it — strip the bark, strike on the beat, and carry the timber home. ' +
-      'Live at play.chopline.net (Java 1.12–1.21, resource pack required).',
-    tags: ['Development', 'Multiplayer', 'Game Design'],
-    links: [
-      { label: 'Website', url: 'https://chopline.net', icon: 'web' },
-    ],
-    assets: [
-      { type: 'image', src: 'img/chopline.webp' },
     ],
   },
   {
