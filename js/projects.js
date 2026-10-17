@@ -51,6 +51,24 @@ export const projects = [
     ],
   },
   {
+    id: 23,
+    name: 'Bellboy Busters',
+    category: 'Games',
+    year: 2026,
+    subtitle: 'Video Game, Multiplayer, Platformer',
+    description:
+      'A 2D multiplayer deathrun-style platformer: you are a fish working at a hotel, ' +
+      'but something is living in its walls. Grab some friends and reach the ghost — ' +
+      'if you can make it there. Made in two weeks for the Comfy Jam Autumn 2026.',
+    tags: ['Development', 'Multiplayer', 'Game Jam'],
+    links: [
+      { label: 'itch.io', url: 'https://sanokei.itch.io/bellboybusters', icon: 'itchio' },
+    ],
+    assets: [
+      { type: 'image', src: 'img/bellboy-busters.webp' },
+    ],
+  },
+  {
     id: 18,
     name: 'Fish out of Water',
     category: 'Games',
