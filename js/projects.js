@@ -69,6 +69,24 @@ export const projects = [
     ],
   },
   {
+    id: 24,
+    name: 'Chopline',
+    category: 'Games',
+    year: 2026,
+    subtitle: 'Minecraft Server, Rhythm MMO',
+    description:
+      'A rhythm MMO inside Minecraft: every tree has a song, and felling one means ' +
+      'playing it — strip the bark, strike on the beat, and carry the timber home. ' +
+      'Live at play.chopline.net (Java 1.12–1.21, resource pack required).',
+    tags: ['Development', 'Multiplayer', 'Game Design'],
+    links: [
+      { label: 'Website', url: 'https://chopline.net', icon: 'web' },
+    ],
+    assets: [
+      { type: 'image', src: 'img/chopline.webp' },
+    ],
+  },
+  {
     id: 18,
     name: 'Fish out of Water',
     category: 'Games',
