@@ -19,7 +19,7 @@ the taxi as CC0 or as Sano's original work.
 
 ## What this is
 A realistic 3D model of a classic gallery picture light (wall-mounted lamp
-for illuminating framed artwork), built for the gallery wall on sanokei.com.
+for illuminating framed artwork), built for the gallery wall on the portfolio wall.
 
 ## Authorship
 - **Modeled from scratch** in Blender 4.2.3 LTS (headless) on 2026-10-15.
@@ -55,7 +55,7 @@ for illuminating framed artwork), built for the gallery wall on sanokei.com.
 ## door.glb
 
 A realistic commercial hollow-metal STEEL exterior door for the street-level
-brick entryway on sanokei.com (replaces the procedural BoxGeometry door +
+brick entryway on the portfolio wall (replaces the procedural BoxGeometry door +
 canvas texture; the earlier wooden paneled version was rejected by Sano).
 
 - **Slab:** 1.5 × 3.0 × 0.05 flush charcoal-painted steel (#0f1013 family,
@@ -188,7 +188,7 @@ itself was kept). All fixes in `build_taxi_v3.py`:
 ## nyc-taxi.glb (v3 — Ian Hubert photo-projection remodel, 2026-10-15)
 
 A modern NYC yellow cab (Toyota Camry design language) for the gallery
-street scene on sanokei.com. **Complete remodel** replacing v2 (Sano
+street scene on the portfolio wall. **Complete remodel** replacing v2 (Sano
 rejected v1 and v2 as toy-like/cartoonish: bulbous Beetle-like cabin,
 stubby rear, disc wheels). This version applies **Ian Hubert's
 "lazy tutorial" photo-projection technique**: simple base geometry with
@@ -238,7 +238,7 @@ headlights, and reflections instead of procedurally faking them.
 ## nyc-taxi.glb (v2 — full remodel, 2026-10-15) — SUPERSEDED by v3
 
 A modern NYC yellow cab (2018+ Toyota Camry XV70 design language) for the
-gallery street scene on sanokei.com. **Complete remodel** replacing the v1
+gallery street scene on the portfolio wall. **Complete remodel** replacing the v1
 model (the user rejected v1 as looking awful/toy-like: too chunky and
 angular with a slab-sided body and a giant plain-box roof sign).
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Reference
 
-- **Production:** `main` (deployed via GitHub Pages). Feature branches (e.g. `threejs`, `ending-section`) merge into `main`.
+- **Production:** `main`, served by Cloudflare Pages (`portfolio-nnf.pages.dev`, auto-deploys from GitHub) and GitHub Pages (`sanokei.github.io/portfolio`). No custom domain: `sanokei.com` is the Sanokei company site (separate repo). Feature branches (e.g. `threejs`, `ending-section`) merge into `main`.
 - **Serve locally:** `node -e "const http=require('http'),fs=require('fs'),path=require('path'),url=require('url');const mime={'.html':'text/html','.css':'text/css','.js':'application/javascript','.mp4':'video/mp4','.webm':'video/webm','.png':'image/png','.jpg':'image/jpeg','.gif':'image/gif','.ttf':'font/ttf'};http.createServer((req,res)=>{let p=url.parse(req.url).pathname.replace(/\.\.\//g,'');p=p==='/'?'/index.html':p;let f=path.join('.',p);fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);res.end('404')}else{res.writeHead(200,{'Content-Type':mime[path.extname(f)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(d)}})}).listen(3000,()=>console.log('http://localhost:3000'))"`
 - **Deploy:** merge the feature branch into `main`, push to origin (GitHub Pages serves `main`).
 
